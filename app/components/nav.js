@@ -1,4 +1,5 @@
 "use client";
+
 import Link from "next/link";
 import { useState } from "react";
 
@@ -34,18 +35,28 @@ export default function Navbar() {
               </Link>
             </li>
             <li className="nav-item">
-              <Link href="/pages/about" className="nav-link">
+              <Link href="/about" className="nav-link">
                 About
               </Link>
             </li>
             <li className="nav-item">
-              <Link href="/pages/service" className="nav-link">
+              <Link href="/service" className="nav-link">
                 Services
               </Link>
             </li>
             <li className="nav-item">
-              <Link href="/pages/contact" className="nav-link">
+              <Link href="/contact" className="nav-link">
                 Contact
+              </Link>
+            </li>
+            <li className="nav-item btn btn-primary py-0 ms-2">
+              <Link href="/signin" className="nav-link">
+                Sign In
+              </Link>
+            </li>
+            <li className="nav-item btn btn-outline-primary py-0 ms-2">
+              <Link href="/signup" className="nav-link">
+                Sign Up
               </Link>
             </li>
           </ul>
