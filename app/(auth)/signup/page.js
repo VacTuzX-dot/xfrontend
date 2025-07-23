@@ -56,22 +56,57 @@ export default function RegisterForm() {
     setErrors((prev) => ({ ...prev, [name]: undefined }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const validationErrors = validateForm(formData);
     setErrors(validationErrors);
 
     if (Object.keys(validationErrors).length === 0) {
       setSubmitted(true);
-      setTimeout(() => {
+
+      // แปลงข้อมูลให้ตรงกับ API
+      const newUser = {
+        id: Date.now(), // หรือคุณอาจให้ backend auto-generate ก็ได้
+        firstname: formData.prefix,
+        fullname: `${formData.firstName} ${formData.lastName}`,
+        lastname: formData.lastName,
+        username: formData.username,
+        password: formData.password,
+        address: formData.address,
+        sex: formData.gender.toLowerCase(), // "Male" → "male"
+        birthday: formatDate(formData.birthdate), // "YYYY-MM-DD" → "DD/MM/YYYY"
+      };
+
+      try {
+        const response = await fetch("http://itdev.cmtc.ac.th:3000/api/users", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(newUser),
+        });
+
+        if (!response.ok) {
+          throw new Error("Signup failed. Please try again.");
+        }
+
         Notiflix.Report.success(
-          "Login Successful",
-          "You have successfully signed in.",
+          "Signup Successful",
+          "Your account has been created.",
           "OK",
-          () => (window.location.href = "/")
+          () => (window.location.href = "/signin")
         );
-      }, 1500);
+      } catch (error) {
+        Notiflix.Report.failure("Error", error.message, "OK");
+        setSubmitted(false);
+      }
     }
+  };
+
+  // 🔧 แปลงวันที่เป็น "DD/MM/YYYY"
+  const formatDate = (dateStr) => {
+    const [year, month, day] = dateStr.split("-");
+    return `${day}/${month}/${parseInt(year) + 543}`; // พ.ศ.
   };
 
   return (
@@ -96,9 +131,9 @@ export default function RegisterForm() {
               className={`form-select ${errors.prefix ? "is-invalid" : ""}`}
             >
               <option value="">-- Select --</option>
-              <option value="Mr.">Mr.</option>
-              <option value="Mrs.">Mrs.</option>
-              <option value="Ms.">Ms.</option>
+              <option value="Mr">Mr</option>
+              <option value="Mrs">Mrs</option>
+              <option value="Ms">Ms</option>
             </select>
             {errors.prefix && (
               <div className="invalid-feedback">{errors.prefix}</div>

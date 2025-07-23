@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import Notiflix from "notiflix";
+import bcrypt from "bcryptjs";
 
 export default function LoginPage() {
   const [fadeIn, setFadeIn] = useState(false);
@@ -31,43 +32,51 @@ export default function LoginPage() {
     setForm({ ...form, [name]: type === "checkbox" ? checked : value });
     setErrors({ ...errors, [name]: undefined });
   };
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const validationErrors = validate();
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       return;
     }
+
     setSubmitting(true);
 
-    setTimeout(() => {
-      setSubmitting(false);
+    try {
+      // ดึง users ทั้งหมด
+      const res = await fetch("http://itdev.cmtc.ac.th:3000/api/users");
+      const users = await res.json();
 
-      // สมมุติว่า login ผิด
-      const loginSuccess = false;
+      // หาผู้ใช้ที่ตรง username
+      const user = users.find((u) => u.username === form.username);
+      if (!user) throw new Error("Username or password is incorrect");
 
-      if (loginSuccess) {
-        Notiflix.Report.success(
-          "Login Successful",
-          "You have successfully signed in.",
-          "OK",
-          () => (window.location.href = "/")
-        );
-      } else {
-        Notiflix.Confirm.show(
-          "Login Failed",
-          "Incorrect email or password.<br/><br/>Forgot your password?",
-          "Reset Password",
-          "OK",
-          function okCb() {
-            window.location.href = "/forgotpassword";
-          },
-          function cancelCb() {
-            Notiflix.Notify.info("Try logging in again");
-          }
-        );
-      }
-    }, 1000);
+      // 🔐 เปรียบเทียบ password แบบ hash
+      const passwordMatch = await bcrypt.compare(form.password, user.password);
+      if (!passwordMatch) throw new Error("Username or password is incorrect");
+
+      // ✅ Login สำเร็จ
+      Notiflix.Report.success(
+        "Login Successful",
+        `Welcome To Our Website ${user.fullname || user.username}!`,
+        "OK",
+        () => (window.location.href = "/about")
+      );
+    } catch (err) {
+      Notiflix.Confirm.show(
+        "Login Failed",
+        `${err.message || "Login error occurred"}`,
+        "Try Again",
+        "Cancel",
+        function okCb() {
+          setSubmitting(false);
+        },
+        function cancelCb() {
+          setSubmitting(false);
+          Notiflix.Notify.info("You can try again later.");
+        }
+      );
+    }
   };
 
   return (
