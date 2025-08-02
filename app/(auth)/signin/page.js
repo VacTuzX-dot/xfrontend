@@ -1,224 +1,259 @@
-"use client";
-import React, { useState, useEffect } from "react";
-import "bootstrap/dist/css/bootstrap.min.css";
-import Swal from "sweetalert2";
-import bcrypt from "bcryptjs";
+'use client';
 
-export default function LoginPage() {
-  const [fadeIn, setFadeIn] = useState(false);
-  const [form, setForm] = useState({
-    username: "",
-    password: "",
-    remember: false,
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Swal from 'sweetalert2';
+import bcrypt from 'bcryptjs';
+
+export default function Login() {
+  const router = useRouter();
+  const [formData, setFormData] = useState({
+    username: '',
+    password: '',
+    rememberMe: false
   });
-  const [errors, setErrors] = useState({});
-  const [submitting, setSubmitting] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
-  useEffect(() => {
-    setTimeout(() => setFadeIn(true), 100);
-  }, []);
-
-  const validate = () => {
-    const newErrors = {};
-    if (!form.username) newErrors.username = "Username is required";
-    if (!form.password) newErrors.password = "Password is required";
-    else if (form.password.length < 6)
-      newErrors.password = "Password must be at least 6 characters";
-    return newErrors;
+  const handleInputChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
   };
 
-  const handleChange = (e) => {
-    const { name, type, value, checked } = e.target;
-    setForm({ ...form, [name]: type === "checkbox" ? checked : value });
-    setErrors({ ...errors, [name]: undefined });
+  const validateForm = () => {
+    if (!formData.username.trim()) {
+      Swal.fire('Error', 'กรุณากรอกชื่อผู้ใช้', 'error');
+      return false;
+    }
+    if (!formData.password.trim()) {
+      Swal.fire('Error', 'กรุณากรอกรหัสผ่าน', 'error');
+      return false;
+    }
+    return true;
   };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const validationErrors = validate();
-    if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors);
-      return;
-    }
+    
+    if (!validateForm()) return;
 
-    setSubmitting(true);
+    setLoading(true);
 
     try {
-      // ดึง users ทั้งหมด
-      const res = await fetch("http://itdev.cmtc.ac.th:3000/api/users");
-      const users = await res.json();
-
-      // หาผู้ใช้ที่ตรง username
-      const user = users.find((u) => u.username === form.username);
-      if (!user) throw new Error("Username or password is incorrect");
-
-      // 🔐 เปรียบเทียบ password แบบ hash
-      const passwordMatch = await bcrypt.compare(form.password, user.password);
-      if (!passwordMatch) throw new Error("Username or password is incorrect");
-
-      // ✅ Login สำเร็จ
-      Swal.fire({
-        title: "Login Successful",
-        text: `Welcome To Our Website ${user.fullname || user.username}!`,
-        icon: "success",
-        confirmButtonText: "OK",
-      }).then(() => {
-        window.location.href = "/about";
-      });
-    } catch (err) {
-      const result = await Swal.fire({
-        title: "Login Failed",
-        text: `${err.message || "Login error occurred"}`,
-        icon: "error",
-        showCancelButton: true,
-        confirmButtonText: "Try Again",
-        cancelButtonText: "Cancel",
+      // Hash password for security
+      const hashedPassword = await bcrypt.hash(formData.password, 10);
+      
+      const response = await fetch('/api/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          username: formData.username,
+          password: hashedPassword,
+          action: 'login'
+        }),
       });
 
-      setSubmitting(false);
+      if (response.ok) {
+        const result = await response.json();
+        
+        // Store user data if remember me is checked
+        if (formData.rememberMe) {
+          localStorage.setItem('user', JSON.stringify({
+            username: formData.username,
+            rememberMe: true
+          }));
+        } else {
+          sessionStorage.setItem('user', JSON.stringify({
+            username: formData.username,
+            rememberMe: false
+          }));
+        }
 
-      if (!result.isConfirmed) {
-        Swal.fire({
-          text: "You can try again later.",
-          icon: "info",
-          toast: true,
-          position: "top-end",
-          showConfirmButton: false,
-          timer: 3000,
+        await Swal.fire({
+          title: 'เข้าสู่ระบบสำเร็จ!',
+          text: `ยินดีต้อนรับ ${formData.username}`,
+          icon: 'success',
+          confirmButtonText: 'ตกลง',
+          timer: 2000,
+          timerProgressBar: true
         });
+        
+        router.push('/');
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
       }
+    } catch (error) {
+      console.error('Login error:', error);
+      Swal.fire({
+        title: 'เข้าสู่ระบบไม่สำเร็จ!',
+        text: error.message || 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ',
+        icon: 'error',
+        confirmButtonText: 'ตกลง'
+      });
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const handleForgotPassword = () => {
+    Swal.fire({
+      title: 'ลืมรหัสผ่าน?',
+      text: 'กรุณาติดต่อผู้ดูแลระบบเพื่อรีเซ็ตรหัสผ่าน',
+      icon: 'info',
+      confirmButtonText: 'ตกลง'
+    });
   };
 
   return (
-    <div className="container min-vh-100 d-flex align-items-center justify-content-center">
-      <div
-        className={`card shadow-lg p-4 rounded-4 border-0 animate__animated ${
-          fadeIn ? "animate__fadeInDown" : ""
-        }`}
-        style={{ maxWidth: "420px", width: "100%" }}
-      >
-        <div className="text-center mb-4">
-          <img
-            src="https://cdn-icons-png.flaticon.com/512/295/295128.png"
-            alt="Login"
-            style={{ width: 56, marginBottom: 12, opacity: 0.85 }}
-            className="animate__animated animate__bounce"
-          />
-          <h2 className="fw-bold mb-1 text-primary">Welcome Back!</h2>
-          <p className="text-muted mb-0">Please sign in to your account</p>
-        </div>
-
-        <form onSubmit={handleSubmit} noValidate>
-          {/* Username */}
-          <div className="mb-3">
-            <label htmlFor="username" className="form-label fw-semibold">
-              Username
-            </label>
-            <input
-              type="text"
-              name="username"
-              id="username"
-              className={`form-control shadow-sm ${
-                errors.username ? "is-invalid" : ""
-              }`}
-              placeholder="Enter your username"
-              value={form.username}
-              onChange={handleChange}
-              disabled={submitting}
-              autoFocus
-            />
-            {errors.username && (
-              <div className="invalid-feedback">{errors.username}</div>
-            )}
-          </div>
-
-          {/* Password */}
-          <div className="mb-2">
-            <label htmlFor="password" className="form-label fw-semibold">
-              Password
-            </label>
-            <input
-              type="password"
-              name="password"
-              id="password"
-              className={`form-control shadow-sm ${
-                errors.password ? "is-invalid" : ""
-              }`}
-              placeholder="Enter your password"
-              value={form.password}
-              onChange={handleChange}
-              disabled={submitting}
-            />
-            {errors.password && (
-              <div className="invalid-feedback">{errors.password}</div>
-            )}
-          </div>
-
-          {/* Remember Me + Forgot Password */}
-          <div className="d-flex justify-content-between align-items-center mb-3">
-            <div className="form-check">
-              <input
-                type="checkbox"
-                name="remember"
-                id="remember"
-                className="form-check-input"
-                checked={form.remember}
-                onChange={handleChange}
-              />
-              <label htmlFor="remember" className="form-check-label">
-                Remember me
-              </label>
+    <div className="container-fluid min-vh-100 d-flex align-items-center justify-content-center">
+      <div className="row w-100 justify-content-center">
+        <div className="col-md-6 col-lg-4 col-xl-3">
+          <div className="card shadow-lg border-0">
+            <div className="card-header bg-primary text-white text-center py-3">
+              <h3 className="mb-0">
+                <i className="bi bi-box-arrow-in-right me-2"></i>
+                เข้าสู่ระบบ
+              </h3>
             </div>
-            <a
-              href="/forgot-password"
-              className="text-decoration-none text-primary small fw-semibold"
-            >
-              Forgot password?
-            </a>
+            <div className="card-body p-4">
+              <form onSubmit={handleSubmit}>
+                {/* Username */}
+                <div className="mb-3">
+                  <label htmlFor="username" className="form-label">
+                    <i className="bi bi-person me-1"></i>
+                    ชื่อผู้ใช้
+                  </label>
+                  <div className="input-group">
+                    <span className="input-group-text">
+                      <i className="bi bi-person"></i>
+                    </span>
+                    <input
+                      type="text"
+                      className="form-control"
+                      id="username"
+                      name="username"
+                      value={formData.username}
+                      onChange={handleInputChange}
+                      placeholder="กรอกชื่อผู้ใช้"
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* Password */}
+                <div className="mb-3">
+                  <label htmlFor="password" className="form-label">
+                    <i className="bi bi-lock me-1"></i>
+                    รหัสผ่าน
+                  </label>
+                  <div className="input-group">
+                    <span className="input-group-text">
+                      <i className="bi bi-lock"></i>
+                    </span>
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      className="form-control"
+                      id="password"
+                      name="password"
+                      value={formData.password}
+                      onChange={handleInputChange}
+                      placeholder="กรอกรหัสผ่าน"
+                      required
+                    />
+                    <button
+                      type="button"
+                      className="btn btn-outline-secondary"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      <i className={`bi ${showPassword ? 'bi-eye-slash' : 'bi-eye'}`}></i>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Remember Me */}
+                <div className="mb-3">
+                  <div className="form-check">
+                    <input
+                      className="form-check-input"
+                      type="checkbox"
+                      id="rememberMe"
+                      name="rememberMe"
+                      checked={formData.rememberMe}
+                      onChange={handleInputChange}
+                    />
+                    <label className="form-check-label" htmlFor="rememberMe">
+                      <i className="bi bi-check-circle me-1"></i>
+                      จำฉันไว้
+                    </label>
+                  </div>
+                </div>
+
+                {/* Submit Button */}
+                <div className="d-grid mb-3">
+                  <button
+                    type="submit"
+                    className="btn btn-primary btn-lg"
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        กำลังเข้าสู่ระบบ...
+                      </>
+                    ) : (
+                      <>
+                        <i className="bi bi-box-arrow-in-right me-2"></i>
+                        เข้าสู่ระบบ
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* Links */}
+                <div className="text-center">
+                  <div className="row">
+                    <div className="col-6">
+                      <a 
+                        href="/signup" 
+                        className="text-decoration-none text-primary"
+                      >
+                        <i className="bi bi-person-plus me-1"></i>
+                        สมัครสมาชิก
+                      </a>
+                    </div>
+                    <div className="col-6">
+                      <button
+                        type="button"
+                        className="btn btn-link text-decoration-none text-primary p-0"
+                        onClick={handleForgotPassword}
+                      >
+                        <i className="bi bi-question-circle me-1"></i>
+                        ลืมรหัสผ่าน
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </form>
+            </div>
           </div>
 
-          {/* Submit Button */}
-          <button
-            type="submit"
-            className="btn btn-primary w-100 fw-bold py-2"
-            disabled={submitting}
-            style={{
-              background: "linear-gradient(90deg, #6366f1 60%, #818cf8 100%)",
-              border: "none",
-              boxShadow: "0 2px 8px rgba(99,102,241,0.2)",
-            }}
-          >
-            {submitting ? (
-              <>
-                <span
-                  className="spinner-border spinner-border-sm me-2"
-                  role="status"
-                  aria-hidden="true"
-                ></span>
-                Logging in...
-              </>
-            ) : (
-              "Login"
-            )}
-          </button>
-        </form>
-
-        {/* Register Link */}
-        <div className="text-center mt-4">
-          <span className="text-muted">
-            Don’t have an account?{" "}
-            <a href="/signup" className="fw-semibold text-primary">
-              Register here
-            </a>
-          </span>
+          {/* Additional Info Card */}
+          <div className="card mt-3 border-0 ">
+            <div className="card-body text-center py-2">
+              <small className="text-muted">
+                <i className="bi bi-info-circle me-1"></i>
+                ยังไม่มีบัญชี? <a href="/signup" className="text-decoration-none">สมัครสมาชิก</a> ได้เลย
+              </small>
+            </div>
+          </div>
         </div>
       </div>
-
-      {/* Animate.css CDN */}
-      <link
-        rel="stylesheet"
-        href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"
-      />
     </div>
   );
 }

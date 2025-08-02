@@ -1,368 +1,353 @@
-"use client";
-import React, { useState, useCallback, useMemo } from "react";
-import "bootstrap/dist/css/bootstrap.min.css";
-import { motion } from "framer-motion";
-import Swal from "sweetalert2";
+'use client';
 
-// Form configuration
-const FORM_FIELDS = [
-  { name: "firstName", label: "First Name", type: "text", required: true },
-  { name: "lastName", label: "Last Name", type: "text", required: true },
-  { name: "username", label: "Username", type: "text", required: true },
-  {
-    name: "password",
-    label: "Password",
-    type: "password",
-    required: true,
-    minLength: 6,
-  },
-  {
-    name: "confirmPassword",
-    label: "Confirm Password",
-    type: "password",
-    required: true,
-  },
-];
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Swal from 'sweetalert2';
 
-const PREFIX_OPTIONS = ["Mr", "Mrs", "Ms"];
-const GENDER_OPTIONS = ["Male", "Female", "Other"];
-
-// Optimized validation
-const validateField = (name, value, formData) => {
-  switch (name) {
-    case "prefix":
-      return !value ? "Please select a title." : "";
-    case "firstName":
-    case "lastName":
-    case "username":
-    case "address":
-      return !value
-        ? `${name.replace(/([A-Z])/g, " $1").toLowerCase()} is required.`
-        : "";
-    case "password":
-      return !value || value.length < 6
-        ? "Password must be at least 6 characters."
-        : "";
-    case "confirmPassword":
-      return value !== formData.password ? "Passwords do not match." : "";
-    case "gender":
-      return !value ? "Please select your gender." : "";
-    case "birthdate":
-      return !value ? "Please select your birthdate." : "";
-    case "accepted":
-      return !value ? "You must accept the terms." : "";
-    default:
-      return "";
-  }
-};
-
-// Format date helper
-const formatDate = (dateStr) => {
-  const [year, month, day] = dateStr.split("-");
-  return `${day}/${month}/${parseInt(year) + 543}`;
-};
-
-export default function RegisterForm() {
+export default function Register() {
+  const router = useRouter();
   const [formData, setFormData] = useState({
-    prefix: "",
-    firstName: "",
-    lastName: "",
-    username: "",
-    password: "",
-    confirmPassword: "",
-    gender: "",
-    birthdate: "",
-    address: "",
-    accepted: false,
+    username: '',
+    password: '',
+    title: '',
+    firstname: '',
+    lastname: '',
+    address: '',
+    sex: '',
+    birthday: '',
+    acceptTerms: false
   });
+  const [loading, setLoading] = useState(false);
 
-  const [errors, setErrors] = useState({});
-  const [submitted, setSubmitted] = useState(false);
+  const handleInputChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
+  };
 
-  // Optimized change handler with validation
-  const handleChange = useCallback(
-    (e) => {
-      const { name, value, type, checked } = e.target;
-      const newValue = type === "checkbox" ? checked : value;
+  const validateForm = () => {
+    if (!formData.username.trim()) {
+      Swal.fire('Error', 'กรุณากรอกชื่อผู้ใช้', 'error');
+      return false;
+    }
+    if (!formData.password.trim()) {
+      Swal.fire('Error', 'กรุณากรอกรหัสผ่าน', 'error');
+      return false;
+    }
+    if (formData.password.length < 6) {
+      Swal.fire('Error', 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร', 'error');
+      return false;
+    }
+    if (!formData.title) {
+      Swal.fire('Error', 'กรุณาเลือกคำนำหน้าชื่อ', 'error');
+      return false;
+    }
+    if (!formData.firstname.trim()) {
+      Swal.fire('Error', 'กรุณากรอกชื่อ', 'error');
+      return false;
+    }
+    if (!formData.lastname.trim()) {
+      Swal.fire('Error', 'กรุณากรอกนามสกุล', 'error');
+      return false;
+    }
+    if (!formData.address.trim()) {
+      Swal.fire('Error', 'กรุณากรอกที่อยู่', 'error');
+      return false;
+    }
+    if (!formData.sex) {
+      Swal.fire('Error', 'กรุณาเลือกเพศ', 'error');
+      return false;
+    }
+    if (!formData.birthday) {
+      Swal.fire('Error', 'กรุณาเลือกวันเกิด', 'error');
+      return false;
+    }
+    if (!formData.acceptTerms) {
+      Swal.fire('Error', 'กรุณายอมรับเงื่อนไขการใช้งาน', 'error');
+      return false;
+    }
+    return true;
+  };
 
-      setFormData((prev) => ({ ...prev, [name]: newValue }));
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!validateForm()) return;
 
-      // Real-time validation
-      if (errors[name]) {
-        const error = validateField(name, newValue, {
-          ...formData,
-          [name]: newValue,
+    setLoading(true);
+
+    try {
+      const response = await fetch('/api/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        await Swal.fire({
+          title: 'สำเร็จ!',
+          text: 'ลงทะเบียนเรียบร้อยแล้ว',
+          icon: 'success',
+          confirmButtonText: 'ตกลง'
         });
-        setErrors((prev) => ({ ...prev, [name]: error || undefined }));
+        router.push('/signin');
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'เกิดข้อผิดพลาดในการลงทะเบียน');
       }
-    },
-    [errors, formData]
-  );
-
-  // Memoized validation
-  const validationErrors = useMemo(() => {
-    const errors = {};
-    Object.keys(formData).forEach((key) => {
-      const error = validateField(key, formData[key], formData);
-      if (error) errors[key] = error;
-    });
-    return errors;
-  }, [formData]);
-
-  // Optimized submit handler
-  const handleSubmit = useCallback(
-    async (e) => {
-      e.preventDefault();
-      setErrors(validationErrors);
-
-      if (Object.keys(validationErrors).length === 0) {
-        setSubmitted(true);
-
-        const payload = {
-          id: Date.now(),
-          firstname: formData.prefix,
-          fullname: `${formData.firstName} ${formData.lastName}`,
-          lastname: formData.lastName,
-          username: formData.username,
-          password: formData.password,
-          address: formData.address,
-          sex: formData.gender.toLowerCase(),
-          birthday: formatDate(formData.birthdate),
-        };
-
-        try {
-          const response = await fetch(
-            "http://itdev.cmtc.ac.th:3000/api/users",
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(payload),
-            }
-          );
-
-          if (!response.ok) throw new Error("Signup failed. Please try again.");
-
-          Swal.fire({
-            title: "Signup Successful",
-            text: "Your account has been created.",
-            icon: "success",
-            confirmButtonText: "OK",
-          }).then(() => {
-            window.location.href = "/signin";
-          });
-        } catch (error) {
-          Swal.fire({
-            title: "Error",
-            text: error.message,
-            icon: "error",
-            confirmButtonText: "OK",
-          });
-          setSubmitted(false);
-        }
-      }
-    },
-    [formData, validationErrors]
-  );
-
-  // Memoized form components
-  const FormField = React.memo(({ field, value, error, onChange }) => (
-    <div className="col-md-6">
-      <label className="form-label fw-semibold text-dark">
-        <i className={`bi bi-${getFieldIcon(field.name)} me-2`}></i>
-        {field.label} *
-      </label>
-      <input
-        type={field.type}
-        name={field.name}
-        value={value}
-        onChange={onChange}
-        className={`form-control ${error ? "is-invalid" : ""}`}
-        style={{ borderRadius: '8px' }}
-        placeholder={`Enter your ${field.label.toLowerCase()}`}
-      />
-      {error && <div className="invalid-feedback">{error}</div>}
-    </div>
-  ));
-
-  // Helper function for field icons
-  const getFieldIcon = (fieldName) => {
-    const iconMap = {
-      firstName: 'person',
-      lastName: 'person',
-      username: 'person-circle',
-      password: 'lock',
-      confirmPassword: 'lock-fill'
-    };
-    return iconMap[fieldName] || 'pencil';
+    } catch (error) {
+      console.error('Registration error:', error);
+      Swal.fire({
+        title: 'ข้อผิดพลาด!',
+        text: error.message || 'เกิดข้อผิดพลาดในการลงทะเบียน',
+        icon: 'error',
+        confirmButtonText: 'ตกลง'
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <>
-      <div className="container py-5">
-        <div className="row justify-content-center">
-          <div className="col-12 col-md-8 col-lg-6">
-            <motion.div
-              className="card shadow-sm border-0"
-              style={{ 
-                borderRadius: '12px',
-                background: 'linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%)'
-              }}
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-            >
-              <div className="card-body p-4 p-md-5"></div>
-                <div className="text-center mb-4">
-                  <h2 className="fw-bold text-primary mb-2">Create Your Account</h2>
-                  <p className="text-muted">Join us today and get started</p>
+    <div className="container-fluid min-vh-100 d-flex align-items-center justify-content-center py-4">
+      <div className="row w-100 justify-content-center">
+        <div className="col-12 col-md-10 col-lg-8 col-xl-6">
+          <div className="card shadow-lg border-0">
+            <div className="card-header bg-primary text-white text-center py-3">
+              <h3 className="mb-0">
+                <i className="bi bi-person-plus me-2"></i>
+                ลงทะเบียนผู้ใช้
+              </h3>
+            </div>
+            <div className="card-body p-4 p-md-5">
+              <form onSubmit={handleSubmit}>
+                {/* Username and Password Row */}
+                <div className="row mb-3">
+                  <div className="col-md-6">
+                    <label htmlFor="username" className="form-label">
+                      <i className="bi bi-person me-1"></i>
+                      ชื่อผู้ใช้ *
+                    </label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      id="username"
+                      name="username"
+                      value={formData.username}
+                      onChange={handleInputChange}
+                      placeholder="กรอกชื่อผู้ใช้"
+                      required
+                    />
+                  </div>
+                  <div className="col-md-6">
+                    <label htmlFor="password" className="form-label">
+                      <i className="bi bi-lock me-1"></i>
+                      รหัสผ่าน *
+                    </label>
+                    <input
+                      type="password"
+                      className="form-control"
+                      id="password"
+                      name="password"
+                      value={formData.password}
+                      onChange={handleInputChange}
+                      placeholder="กรอกรหัสผ่าน (อย่างน้อย 6 ตัวอักษร)"
+                      required
+                    />
+                  </div>
                 </div>
 
-                <form onSubmit={handleSubmit} noValidate>
-                  {/* Title */}
-                  <div className="mb-3">
-                    <label className="form-label fw-semibold text-dark">
-                      <i className="bi bi-person-badge me-2"></i>Title *
-                    </label>
-                    <select
-                      name="prefix"
-                      value={formData.prefix}
-                      onChange={handleChange}
-                      className={`form-select ${errors.prefix ? "is-invalid" : ""}`}
-                      style={{ borderRadius: '8px' }}
-                    >
-                      <option value="">-- Select Title --</option>
-                      {PREFIX_OPTIONS.map((option) => (
-                        <option key={option} value={option}>
-                          {option}
-                        </option>
-                      ))}
-                    </select>
-                    {errors.prefix && (
-                      <div className="invalid-feedback">{errors.prefix}</div>
-                    )}
-                  </div>
+                {/* Title */}
+                <div className="mb-3">
+                  <label htmlFor="title" className="form-label">
+                    <i className="bi bi-person-badge me-1"></i>
+                    คำนำหน้าชื่อ *
+                  </label>
+                  <select
+                    className="form-select"
+                    id="title"
+                    name="title"
+                    value={formData.title}
+                    onChange={handleInputChange}
+                    required
+                  >
+                    <option value="">เลือกคำนำหน้าชื่อ</option>
+                    <option value="นาย">นาย</option>
+                    <option value="นาง">นาง</option>
+                    <option value="นางสาว">นางสาว</option>
+                  </select>
+                </div>
 
-                  {/* Form fields */}
-                  <div className="row g-3 mb-3">
-                    {FORM_FIELDS.map((field) => (
-                      <FormField
-                        key={field.name}
-                        field={field}
-                        value={formData[field.name]}
-                        error={errors[field.name]}
-                        onChange={handleChange}
-                      />
-                    ))}
-                  </div>
-
-                  {/* Address */}
-                  <div className="mb-3">
-                    <label className="form-label fw-semibold text-dark">
-                      <i className="bi bi-geo-alt me-2"></i>Address *
+                {/* First Name and Last Name Row */}
+                <div className="row mb-3">
+                  <div className="col-md-6">
+                    <label htmlFor="firstName" className="form-label">
+                      <i className="bi bi-person me-1"></i>
+                      ชื่อ *
                     </label>
-                    <textarea
-                      name="address"
-                      rows={3}
-                      value={formData.address}
-                      onChange={handleChange}
-                      className={`form-control ${errors.address ? "is-invalid" : ""}`}
-                      style={{ borderRadius: '8px', resize: 'vertical' }}
-                      placeholder="Enter your full address"
+                    <input
+                      type="text"
+                      className="form-control"
+                      id="firstname"
+                      name="firstname"
+                      value={formData.firstname}
+                      onChange={handleInputChange}
+                      placeholder="กรอกชื่อ"
+                      required
                     />
-                    {errors.address && (
-                      <div className="invalid-feedback">{errors.address}</div>
-                    )}
                   </div>
-
-                  {/* Gender */}
-                  <div className="mb-3">
-                    <label className="form-label fw-semibold text-dark">
-                      <i className="bi bi-gender-ambiguous me-2"></i>Gender *
+                  <div className="col-md-6">
+                    <label htmlFor="lastName" className="form-label">
+                      <i className="bi bi-person me-1"></i>
+                      นามสกุล *
                     </label>
-                    <div className="d-flex gap-4 mt-2">
-                      {GENDER_OPTIONS.map((gender) => (
-                        <div className="form-check" key={gender}>
-                          <input
-                            className="form-check-input"
-                            type="radio"
-                            name="gender"
-                            value={gender}
-                            checked={formData.gender === gender}
-                            onChange={handleChange}
-                            id={`gender-${gender}`}
-                          />
-                          <label className="form-check-label" htmlFor={`gender-${gender}`}>
-                            {gender}
-                          </label>
-                        </div>
-                      ))}
-                    </div>
-                    {errors.gender && (
-                      <div className="text-danger small mt-1">{errors.gender}</div>
-                    )}
+                    <input
+                      type="text"
+                      className="form-control"
+                      id="lastname"
+                      name="lastname"
+                      value={formData.lastname}
+                      onChange={handleInputChange}
+                      placeholder="กรอกนามสกุล"
+                      required
+                    />
                   </div>
+                </div>
 
-                  {/* Birthdate */}
-                  <div className="mb-3">
-                    <label className="form-label fw-semibold text-dark">
-                      <i className="bi bi-calendar-date me-2"></i>Birthdate *
+                {/* Address */}
+                <div className="mb-3">
+                  <label htmlFor="address" className="form-label">
+                    <i className="bi bi-geo-alt me-1"></i>
+                    ที่อยู่ *
+                  </label>
+                  <textarea
+                    className="form-control"
+                    id="address"
+                    name="address"
+                    value={formData.address}
+                    onChange={handleInputChange}
+                    placeholder="กรอกที่อยู่"
+                    rows="2"
+                    required
+                  ></textarea>
+                </div>
+
+                {/* Gender and Birth Date Row */}
+                <div className="row mb-3">
+                  <div className="col-md-6">
+                    <label className="form-label">
+                      <i className="bi bi-gender-ambiguous me-1"></i>
+                      เพศ *
+                    </label>
+                    <div className="d-flex gap-4">
+                      <div className="form-check">
+                        <input
+                          className="form-check-input"
+                          type="radio"
+                          name="sex"
+                          id="male"
+                          value="ชาย"
+                          checked={formData.sex === 'ชาย'}
+                          onChange={handleInputChange}
+                          required
+                        />
+                        <label className="form-check-label" htmlFor="male">
+                          ชาย
+                        </label>
+                      </div>
+                      <div className="form-check">
+                        <input
+                          className="form-check-input"
+                          type="radio"
+                          name="sex"
+                          id="female"
+                          value="หญิง"
+                          checked={formData.sex === 'หญิง'}
+                          onChange={handleInputChange}
+                          required
+                        />
+                        <label className="form-check-label" htmlFor="female">
+                          หญิง
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="col-md-6">
+                    <label htmlFor="birthDate" className="form-label">
+                      <i className="bi bi-calendar me-1"></i>
+                      วันเกิด *
                     </label>
                     <input
                       type="date"
-                      name="birthdate"
-                      value={formData.birthdate}
-                      onChange={handleChange}
-                      className={`form-control ${
-                        errors.birthdate ? "is-invalid" : ""
-                      }`}
-                      style={{ borderRadius: '8px' }}
+                      className="form-control"
+                      id="birthday"
+                      name="birthday"
+                      value={formData.birthday}
+                      onChange={handleInputChange}
+                      required
                     />
-                    {errors.birthdate && (
-                      <div className="invalid-feedback">{errors.birthdate}</div>
-                    )}
                   </div>
+                </div>
 
-                  {/* Terms */}
-                  <div className="form-check mb-4 p-3 bg-light rounded" style={{ borderRadius: '8px' }}>
+                {/* Terms and Conditions */}
+                <div className="mb-4">
+                  <div className="form-check">
                     <input
+                      className="form-check-input"
                       type="checkbox"
-                      name="accepted"
-                      checked={formData.accepted}
-                      onChange={handleChange}
-                      className={`form-check-input ${
-                        errors.accepted ? "is-invalid" : ""
-                      }`}
-                      id="termsCheckbox"
+                      id="acceptTerms"
+                      name="acceptTerms"
+                      checked={formData.acceptTerms}
+                      onChange={handleInputChange}
+                      required
                     />
-                    <label htmlFor="termsCheckbox" className="form-check-label">
-                      <i className="bi bi-shield-check me-2"></i>
-                      I agree to the <a href="#" className="text-primary">Terms and Conditions</a> *
+                    <label className="form-check-label" htmlFor="acceptTerms">
+                      ฉันยอมรับ <a href="#" className="text-decoration-none">เงื่อนไขการใช้งาน</a> และ{' '}
+                      <a href="#" className="text-decoration-none">นโยบายความเป็นส่วนตัว</a> *
                     </label>
-                    {errors.accepted && (
-                      <div className="text-danger small mt-1">{errors.accepted}</div>
-                    )}
                   </div>
+                </div>
 
-            {/* Submit button */}
-            <motion.button
-              type="submit"
-              className="btn btn-primary w-100 fw-bold"
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
-              disabled={submitted}
-            >
-              {submitted ? (
-                <>
-                  <span className="spinner-border spinner-border-sm me-2" />
-                  Registering...
-                </>
-              ) : (
-                "Register"
-              )}
-            </motion.button>
-          </form>
-        </motion.div>
+                {/* Submit Button */}
+                <div className="d-grid">
+                  <button
+                    type="submit"
+                    className="btn btn-primary btn-lg"
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        กำลังลงทะเบียน...
+                      </>
+                    ) : (
+                      <>
+                        <i className="bi bi-person-plus me-2"></i>
+                        ลงทะเบียน
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* Login Link */}
+                <div className="text-center mt-3">
+                  <p className="mb-0">
+                    มีบัญชีอยู่แล้ว?{' '}
+                    <a href="/signin" className="text-decoration-none">
+                      เข้าสู่ระบบ
+                    </a>
+                  </p>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
       </div>
-    </>
+    </div>
   );
 }
