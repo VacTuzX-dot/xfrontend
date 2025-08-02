@@ -7,7 +7,7 @@ export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <nav className="navbar navbar-expand-md sticky-top shadow-sm">
+    <nav className="navbar navbar-expand-md shadow-sm">
       <div className="container">
         <Link href="/" className="navbar-brand fw-bold">
           MyApp

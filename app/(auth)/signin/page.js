@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
-import Notiflix from "notiflix";
+import Swal from "sweetalert2";
 import bcrypt from "bcryptjs";
 
 export default function LoginPage() {
@@ -56,26 +56,36 @@ export default function LoginPage() {
       if (!passwordMatch) throw new Error("Username or password is incorrect");
 
       // ✅ Login สำเร็จ
-      Notiflix.Report.success(
-        "Login Successful",
-        `Welcome To Our Website ${user.fullname || user.username}!`,
-        "OK",
-        () => (window.location.href = "/about")
-      );
+      Swal.fire({
+        title: "Login Successful",
+        text: `Welcome To Our Website ${user.fullname || user.username}!`,
+        icon: "success",
+        confirmButtonText: "OK",
+      }).then(() => {
+        window.location.href = "/about";
+      });
     } catch (err) {
-      Notiflix.Confirm.show(
-        "Login Failed",
-        `${err.message || "Login error occurred"}`,
-        "Try Again",
-        "Cancel",
-        function okCb() {
-          setSubmitting(false);
-        },
-        function cancelCb() {
-          setSubmitting(false);
-          Notiflix.Notify.info("You can try again later.");
-        }
-      );
+      const result = await Swal.fire({
+        title: "Login Failed",
+        text: `${err.message || "Login error occurred"}`,
+        icon: "error",
+        showCancelButton: true,
+        confirmButtonText: "Try Again",
+        cancelButtonText: "Cancel",
+      });
+
+      setSubmitting(false);
+
+      if (!result.isConfirmed) {
+        Swal.fire({
+          text: "You can try again later.",
+          icon: "info",
+          toast: true,
+          position: "top-end",
+          showConfirmButton: false,
+          timer: 3000,
+        });
+      }
     }
   };
 
