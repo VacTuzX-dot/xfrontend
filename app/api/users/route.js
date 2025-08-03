@@ -26,7 +26,6 @@ export async function GET() {
 export async function POST(request) {
   try {
     const body = await request.json();
-
     const res = await fetch("http://itdev.cmtc.ac.th:3000/api/users", {
       method: "POST",
       headers: {
