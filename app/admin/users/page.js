@@ -5,7 +5,7 @@ import Swal from "sweetalert2";
 import bcrypt from "bcryptjs";
 
 export default function Page() {
-  const API = "http://itdev.cmtc.ac.th:3000/api/users";
+  const API = "/api/users";
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
