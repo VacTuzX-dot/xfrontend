@@ -1,15 +1,26 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Swal from "sweetalert2";
 
 export default function AdminUsers() {
+  const router = useRouter();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [lastUpdate, setLastUpdate] = useState(new Date());
 
   useEffect(() => {
+    const storedUser =
+      typeof window !== "undefined" &&
+      (localStorage.getItem("user") || sessionStorage.getItem("user"));
+
+    if (!storedUser) {
+      router.push("/signin");
+      return;
+    }
+
     fetchUsers();
 
     // Set up real-time polling every 5 seconds - only refresh table data
@@ -19,7 +30,7 @@ export default function AdminUsers() {
 
     // Cleanup interval on component unmount
     return () => clearInterval(interval);
-  }, []);
+  }, [router]);
 
   const fetchUsers = async (showLoading = true) => {
     try {
