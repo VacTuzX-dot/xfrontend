@@ -1,410 +1,527 @@
 "use client";
-
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Swal from "sweetalert2";
+import bcrypt from "bcryptjs";
 
-export default function AdminUsers() {
-  const router = useRouter();
-  const [users, setUsers] = useState([]);
+export default function Page() {
+  const API = "http://itdev.cmtc.ac.th:3000/api/users";
+  const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [lastUpdate, setLastUpdate] = useState(new Date());
+  const [q, setQ] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
+  const [flashIds, setFlashIds] = useState([]); // แถวที่จะทำไฮไลต์หลัง encrypt
+
+  const prevItemsRef = useRef([]);
+
+  async function getUsers(showSpinner = true) {
+    try {
+      if (showSpinner) setLoading(true);
+      const res = await fetch(API);
+      if (!res.ok) throw new Error("Failed to fetch data");
+      const data = await res.json();
+      const arr = Array.isArray(data) ? data : [];
+
+      // ตรวจว่ามี user ไหนที่เพิ่งถูกแฮช (จาก plaintext → hashed) จะเน้นสีให้แป๊บหนึ่ง
+      const prev = prevItemsRef.current;
+      const justHashedIds = [];
+      for (const cur of arr) {
+        const old = prev.find((p) => p.id === cur.id);
+        if (old && old.password && cur.password) {
+          const wasPlain = !isHashed(old.password);
+          const nowHashed = isHashed(cur.password);
+          if (wasPlain && nowHashed) justHashedIds.push(cur.id);
+        }
+      }
+      setFlashIds(justHashedIds);
+      prevItemsRef.current = arr;
+      setItems(arr);
+    } catch (err) {
+      console.error(err);
+      Swal.fire("Error", "โหลดข้อมูลไม่สำเร็จ", "error");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }
 
   useEffect(() => {
-    const storedUser =
-      typeof window !== "undefined" &&
-      (localStorage.getItem("user") || sessionStorage.getItem("user"));
+    getUsers(true);
+    const interval = setInterval(() => getUsers(false), 15000); // 15s
+    return () => clearInterval(interval);
+  }, []);
 
-    if (!storedUser) {
-      router.push("/signin");
+  const filtered = useMemo(() => {
+    if (!q.trim()) return items;
+    const s = q.toLowerCase();
+    return items.filter(
+      (x) =>
+        (x.firstname || "").toLowerCase().includes(s) ||
+        (x.fullname || "").toLowerCase().includes(s) ||
+        (x.lastname || "").toLowerCase().includes(s) ||
+        (x.username || "").toLowerCase().includes(s) ||
+        (x.address || "").toLowerCase().includes(s) ||
+        (x.sex || "").toLowerCase().includes(s)
+    );
+  }, [items, q]);
+
+  const isHashed = (pwd) => typeof pwd === "string" && pwd.startsWith("$2"); // bcrypt marker
+
+  const formatDate = (d) => {
+    if (!d) return "-";
+    try {
+      const dt = new Date(d);
+      if (Number.isNaN(dt.getTime())) return d;
+      return dt.toLocaleDateString("th-TH", {
+        year: "numeric",
+        month: "short",
+        day: "2-digit",
+      });
+    } catch {
+      return d;
+    }
+  };
+
+  async function handleDelete(id) {
+    const { isConfirmed } = await Swal.fire({
+      icon: "warning",
+      title: "ลบผู้ใช้?",
+      text: `คุณแน่ใจหรือไม่ว่าจะลบผู้ใช้ #${id}`,
+      showCancelButton: true,
+      confirmButtonText: "ลบเลย",
+      cancelButtonText: "ยกเลิก",
+      confirmButtonColor: "#d33",
+    });
+    if (!isConfirmed) return;
+
+    try {
+      const res = await fetch(`${API}/${id}`, {
+        method: "DELETE",
+        headers: { Accept: "application/json" },
+      });
+      if (!res.ok) throw new Error("Delete failed");
+      await getUsers(false);
+      Swal.fire("สำเร็จ", "ลบผู้ใช้เรียบร้อย", "success");
+    } catch (err) {
+      console.error(err);
+      Swal.fire("Error", "ลบไม่สำเร็จ", "error");
+    }
+  }
+
+  async function handleEncryptAll() {
+    const targets = items.filter((u) => u.password && !isHashed(u.password));
+    if (targets.length === 0) {
+      Swal.fire("เรียบร้อย", "ทุกบัญชีแฮชรหัสผ่านอยู่แล้ว", "info");
       return;
     }
 
-    fetchUsers();
-
-    // Set up real-time polling every 5 seconds - only refresh table data
-    const interval = setInterval(() => {
-      refreshTableOnly(); // Only refresh table, no loading states
-    }, 5000);
-
-    // Cleanup interval on component unmount
-    return () => clearInterval(interval);
-  }, [router]);
-
-  const fetchUsers = async (showLoading = true) => {
-    try {
-      if (showLoading) {
-        setLoading(true);
-      }
-      const res = await fetch("/api/users");
-      if (!res.ok) throw new Error("Failed to fetch users");
-      const data = await res.json();
-      setUsers(data);
-      setLastUpdate(new Date());
-      setError(""); // Clear any previous errors
-    } catch (err) {
-      setError("Failed to load users");
-      if (showLoading) {
-        await Swal.fire({
-          title: "Error!",
-          text: "Failed to load users. Please try again.",
-          icon: "error",
-          confirmButtonText: "OK",
-        });
-      }
-    } finally {
-      if (showLoading) {
-        setLoading(false);
-      }
-    }
-  };
-
-  const refreshTableOnly = async () => {
-    try {
-      const res = await fetch("/api/users");
-      if (!res.ok) throw new Error("Failed to fetch users");
-      const data = await res.json();
-      setUsers(data);
-      setLastUpdate(new Date());
-    } catch (err) {
-      // Silent error for background refresh
-      console.error("Background refresh failed:", err);
-    }
-  };
-
-  const handleDeleteUser = async (userId, username) => {
-    const result = await Swal.fire({
-      title: "Are you sure?",
-      text: `Do you want to delete user "${username}"?`,
-      icon: "warning",
+    const { isConfirmed } = await Swal.fire({
+      icon: "question",
+      title: "เข้ารหัสรหัสผ่านทั้งหมด?",
+      html: `มี <b>${targets.length}</b> บัญชีที่ยังเป็น plaintext<br/>ระบบจะเข้ารหัสด้วย bcrypt (saltRounds=10) และอัปเดตทีละรายการ`,
       showCancelButton: true,
-      confirmButtonColor: "#d33",
-      cancelButtonColor: "#3085d6",
-      confirmButtonText: "Yes, delete!",
-      cancelButtonText: "Cancel",
+      confirmButtonText: "เริ่มเข้ารหัส",
+      cancelButtonText: "ยกเลิก",
     });
-
-    if (result.isConfirmed) {
-      try {
-        const res = await fetch(`/api/users/${userId}`, {
-          method: "DELETE",
-        });
-
-        if (!res.ok) throw new Error("Failed to delete user");
-
-        await Swal.fire({
-          title: "Deleted!",
-          text: `User "${username}" has been deleted.`,
-          icon: "success",
-          confirmButtonText: "OK",
-        });
-
-        // Refresh the users list
-        refreshTableOnly();
-      } catch (err) {
-        await Swal.fire({
-          title: "Error!",
-          text: "Failed to delete user. Please try again.",
-          icon: "error",
-          confirmButtonText: "OK",
-        });
-      }
-    }
-  };
-
-  const handleEditUser = async (user) => {
-    const { value: formValues } = await Swal.fire({
-      title: "Edit User",
-      html: `
-        <input id="swal-firstname" class="swal2-input" placeholder="First Name" value="${user.firstname || ''}">
-        <input id="swal-lastname" class="swal2-input" placeholder="Last Name" value="${user.lastname || ''}">
-        <input id="swal-username" class="swal2-input" placeholder="Username" value="${user.username || ''}">
-      `,
-      focusConfirm: false,
-      showCancelButton: true,
-      preConfirm: () => ({
-        firstname: document.getElementById('swal-firstname').value,
-        lastname: document.getElementById('swal-lastname').value,
-        username: document.getElementById('swal-username').value,
-      }),
-    });
-
-    if (formValues) {
-      try {
-        const res = await fetch(`/api/users/${user.id}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(formValues),
-        });
-
-        if (!res.ok) throw new Error('Failed to update user');
-
-        await Swal.fire({
-          title: 'Updated!',
-          text: `User "${formValues.username}" has been updated.`,
-          icon: 'success',
-          confirmButtonText: 'OK',
-        });
-
-        refreshTableOnly();
-      } catch (err) {
-        await Swal.fire({
-          title: 'Error!',
-          text: 'Failed to update user. Please try again.',
-          icon: 'error',
-          confirmButtonText: 'OK',
-        });
-      }
-    }
-  };
-
-  const handleViewUser = (user) => {
-    // Calculate age from birthday
-    const calculateAge = (birthday) => {
-      if (!birthday) return "N/A";
-      const today = new Date();
-      const birthDate = new Date(birthday);
-      let age = today.getFullYear() - birthDate.getFullYear();
-      const monthDiff = today.getMonth() - birthDate.getMonth();
-      if (
-        monthDiff < 0 ||
-        (monthDiff === 0 && today.getDate() < birthDate.getDate())
-      ) {
-        age--;
-      }
-      return age;
-    };
-
-    // Format birthday for display
-    const formatBirthday = (birthday) => {
-      if (!birthday) return "N/A";
-      const date = new Date(birthday);
-      return {
-        full: date.toLocaleDateString("en-US", {
-          weekday: "long",
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        }),
-        short: date.toLocaleDateString(),
-        age: calculateAge(birthday),
-      };
-    };
-
-    const birthdayInfo = formatBirthday(user.birthday);
-    const sexDisplay = user.sex || "N/A";
-    const addressDisplay = user.address
-      ? user.address.replace(/\n/g, "<br>")
-      : "N/A";
+    if (!isConfirmed) return;
 
     Swal.fire({
-      title: "User Details",
-      html: `
-        <div class="text-start">
-          <div class="row">
-            <div class="col-md-6">
-              <h6 class="text-primary mb-3">Basic Information</h6>
-              <p><strong>ID:</strong> ${user.id || "N/A"}</p>
-              <p><strong>Title:</strong> ${user.firstname || "N/A"}</p>
-              <p><strong>Full Name:</strong> ${user.fullname || "N/A"}</p>
-              <p><strong>Last Name:</strong> ${user.lastname || "N/A"}</p>
-              <p><strong>Username:</strong> <span class="badge bg-secondary">${user.username || "N/A"}</span></p>
-            </div>
-            <div class="col-md-6">
-              <h6 class="text-primary mb-3">Personal Details</h6>
-                                                           <p><strong>Sex:</strong> <span class="badge ${
-                                                             user.sex ===
-                                                               "Male" ||
-                                                             user.sex ===
-                                                               "male" ||
-                                                             user.sex === "ชาย"
-                                                               ? "bg-primary"
-                                                               : user.sex ===
-                                                                     "Female" ||
-                                                                   user.sex ===
-                                                                     "female" ||
-                                                                   user.sex ===
-                                                                     "หญิง"
-                                                                 ? "bg-danger"
-                                                                 : "bg-secondary"
-                                                           }">${sexDisplay}</span></p>
-              <p><strong>Birthday:</strong> ${birthdayInfo.full}</p>
-              <p><strong>Age:</strong> ${birthdayInfo.age} years old</p>
-              <p><strong>Password:</strong> <span class="text-muted">[Encrypted]</span></p>
-            </div>
-          </div>
-          <hr>
-          <div class="mt-3">
-            <h6 class="text-primary mb-2">Address Details</h6>
-            <div class="bg-light p-3 rounded">
-              ${addressDisplay}
-            </div>
-          </div>
-        </div>
-      `,
-      icon: "info",
-      confirmButtonText: "Close",
-      width: "600px",
-      customClass: {
-        popup: "swal-wide",
-      },
+      title: "กำลังเข้ารหัส...",
+      html: '<div class="progress" style="height:10px;"><div id="encBar" class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%"></div></div>',
+      allowOutsideClick: false,
+      didOpen: () => Swal.showLoading(),
     });
+
+    try {
+      const saltRounds = 10;
+      let ok = 0,
+        fail = 0;
+
+      for (let i = 0; i < targets.length; i++) {
+        const u = targets[i];
+        try {
+          const hashed = bcrypt.hashSync(String(u.password), saltRounds);
+          const body = {
+            id: u.id,
+            firstname: u.firstname ?? "",
+            fullname: u.fullname ?? "",
+            lastname: u.lastname ?? "",
+            username: u.username ?? "",
+            password: hashed,
+            address: u.address ?? "",
+            sex: u.sex ?? "",
+            birthday: u.birthday ?? "",
+          };
+
+          const res = await fetch(API, {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+            },
+            body: JSON.stringify(body),
+          });
+          if (!res.ok) throw new Error("PUT failed");
+          ok++;
+        } catch (e) {
+          console.error(e);
+          fail++;
+        }
+
+        // อัปเดต progress bar
+        const pct = Math.round(((i + 1) / targets.length) * 100);
+        const bar = document.getElementById("encBar");
+        if (bar) bar.style.width = `${pct}%`;
+      }
+
+      await getUsers(false);
+      Swal.fire({
+        icon: fail ? "warning" : "success",
+        title: fail ? "สำเร็จบางส่วน" : "สำเร็จ",
+        html: `เข้ารหัสสำเร็จ: <b>${ok}</b> รายการ<br/>ล้มเหลว: <b>${fail}</b> รายการ`,
+      });
+    } catch (err) {
+      console.error(err);
+      Swal.fire("Error", "เกิดข้อผิดพลาดระหว่างเข้ารหัส", "error");
+    }
+  }
+
+  function showHashFull(hash) {
+    Swal.fire({
+      title: "Password Hash (bcrypt)",
+      html: `<code style="word-break:break-all;display:block;padding:8px;background:#f8f9fa;border-radius:6px">${hash}</code>`,
+      showCancelButton: true,
+      confirmButtonText: "คัดลอก",
+      cancelButtonText: "ปิด",
+    }).then(async (res) => {
+      if (res.isConfirmed) {
+        try {
+          await navigator.clipboard.writeText(hash);
+          Swal.fire("คัดลอกแล้ว", "คัดลอก hash ไปคลิปบอร์ดแล้ว", "success");
+        } catch {
+          Swal.fire("Error", "คัดลอกไม่สำเร็จ", "error");
+        }
+      }
+    });
+  }
+
+  const renderHash = (pwd) => {
+    if (!pwd) return "-";
+    if (isHashed(pwd)) {
+      const short = `${pwd.slice(0, 18)}…${pwd.slice(-6)}`;
+      return (
+        <span className="d-inline-flex align-items-center gap-2">
+          <code title={pwd} className="text-success">
+            {short}
+          </code>
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-success btn-hash"
+            onClick={() => showHashFull(pwd)}
+          >
+            ดูเต็ม / คัดลอก
+          </button>
+        </span>
+      );
+    }
+    // plaintext → แสดงเตือน + ปุ่มเข้ารหัสเฉพาะราย
+    return (
+      <span className="d-inline-flex align-items-center gap-2">
+        <code className="text-danger">plaintext</code>
+        <button
+          type="button"
+          className="btn btn-sm btn-outline-danger"
+          onClick={() => encryptOne(pwd)}
+          title="เข้ารหัสรหัสผ่านนี้ทันที"
+        >
+          เข้ารหัส
+        </button>
+      </span>
+    );
   };
 
-  if (loading) {
-    return (
-      <div className="d-flex vh-100 align-items-center justify-content-center">
-        <div className="spinner-border text-primary" role="status">
-          <span className="visually-hidden">Loading...</span>
-        </div>
-      </div>
-    );
+  async function encryptOneRow(row) {
+    const saltRounds = 10;
+    const hashed = bcrypt.hashSync(String(row.password), saltRounds);
+    const body = {
+      id: row.id,
+      firstname: row.firstname ?? "",
+      fullname: row.fullname ?? "",
+      lastname: row.lastname ?? "",
+      username: row.username ?? "",
+      password: hashed,
+      address: row.address ?? "",
+      sex: row.sex ?? "",
+      birthday: row.birthday ?? "",
+    };
+    const res = await fetch(API, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error("PUT failed");
+  }
+
+  async function encryptOne(plaintextPwd) {
+    // ฟังก์ชันนี้ใช้กับกรณีไม่มี row; เราจะไม่ใช้โดยตรง
+    Swal.fire("Info", "เลือกเข้ารหัสจากปุ่มในแถวแทน", "info");
+  }
+
+  async function handleEncryptOneRow(row) {
+    const { isConfirmed } = await Swal.fire({
+      icon: "question",
+      title: `เข้ารหัสผู้ใช้ #${row.id}?`,
+      showCancelButton: true,
+      confirmButtonText: "เข้ารหัส",
+      cancelButtonText: "ยกเลิก",
+    });
+    if (!isConfirmed) return;
+    try {
+      Swal.showLoading();
+      await encryptOneRow(row);
+      await getUsers(false);
+      Swal.fire("สำเร็จ", "เข้ารหัสเรียบร้อย", "success");
+    } catch (e) {
+      console.error(e);
+      Swal.fire("Error", "เข้ารหัสไม่สำเร็จ", "error");
+    }
   }
 
   return (
-    <div className="container mt-4">
-      <div className="row">
-        <div className="col-12">
-          <div className="card shadow">
-            <div className="card-header bg-primary text-white">
-              <h3 className="mb-0">
-                <i className="fas fa-users me-2"></i>
-                Admin - User Management
-              </h3>
+    <>
+      <style jsx>{`
+        /* การ์ดเฟดเข้า */
+        .card-appear {
+          animation: fadeInUp 500ms ease both;
+        }
+        /* แถวสไลด์ขึ้นแบบ stagger */
+        .row-anim {
+          animation: slideUp 420ms cubic-bezier(0.2, 0.6, 0.2, 1) both;
+          will-change: transform, opacity;
+        }
+        /* ไฮไลต์เมื่อเพิ่งถูกแฮช */
+        .flash {
+          animation: flashBg 1500ms ease 1;
+        }
+        /* ปุ่ม hash hover วาร์ปนิด ๆ */
+        .btn-hash {
+          transition: transform 160ms ease;
+        }
+        .btn-hash:hover {
+          transform: translateY(-1px);
+        }
+        /* skeleton ระหว่างโหลด */
+        .skeleton {
+          height: 14px;
+          border-radius: 6px;
+          background: linear-gradient(90deg, #eee 25%, #f6f6f6 37%, #eee 63%);
+          background-size: 400% 100%;
+          animation: shimmer 1.3s ease infinite;
+        }
+
+        @keyframes shimmer {
+          0% {
+            background-position: 100% 0;
+          }
+          100% {
+            background-position: 0 0;
+          }
+        }
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translate3d(0, 8px, 0);
+          }
+          to {
+            opacity: 1;
+            transform: translate3d(0, 0, 0);
+          }
+        }
+        @keyframes slideUp {
+          from {
+            opacity: 0;
+            transform: translate3d(0, 10px, 0);
+          }
+          to {
+            opacity: 1;
+            transform: translate3d(0, 0, 0);
+          }
+        }
+        @keyframes flashBg {
+          0% {
+            background-color: #e7f7ee;
+          }
+          100% {
+            background-color: transparent;
+          }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .card-appear,
+          .row-anim,
+          .flash {
+            animation: none !important;
+          }
+        }
+      `}</style>
+
+      <div className="container my-4">
+        <div className="card shadow-sm border-0 card-appear">
+          <div className="card-header d-flex flex-wrap align-items-center gap-2">
+            <h5 className="m-0">Users List</h5>
+            <div className="ms-auto d-flex gap-2">
+              <input
+                className="form-control"
+                placeholder="ค้นหา ชื่อ/สกุล/ผู้ใช้/ที่อยู่/เพศ..."
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                style={{ minWidth: 260 }}
+              />
+              <button
+                className="btn btn-outline-secondary"
+                onClick={() => {
+                  setRefreshing(true);
+                  getUsers(true);
+                }}
+                disabled={refreshing || loading}
+              >
+                {refreshing || loading ? (
+                  <span className="spinner-border spinner-border-sm" />
+                ) : (
+                  <i className="bi bi-arrow-clockwise" />
+                )}{" "}
+                Refresh
+              </button>
+              <button className="btn btn-primary" onClick={handleEncryptAll}>
+                <i className="bi bi-shield-lock" /> Encrypt all plaintext
+                passwords
+              </button>
             </div>
-            <div className="card-body">
-              {error && (
-                <div className="alert alert-danger" role="alert">
-                  {error}
-                </div>
-              )}
+          </div>
 
-              <div className="d-flex justify-content-between align-items-center mb-3">
-                <div>
-                  <h5 className="mb-0">All Users ({users.length})</h5>
-                  <small className="text-muted">
-                    Last updated: {lastUpdate.toLocaleTimeString()}
-                  </small>
-                </div>
-                <div className="d-flex align-items-center gap-2">
-                  <div className="d-flex align-items-center">
-                    <div
-                      className="spinner-border spinner-border-sm text-success me-2"
-                      role="status"
-                    >
-                      <span className="visually-hidden">
-                        Auto-refreshing...
-                      </span>
-                    </div>
-                    <small className="text-muted">Auto-refreshing</small>
-                  </div>
-                  <button
-                    className="btn btn-outline-primary btn-sm"
-                    onClick={() => refreshTableOnly()}
-                  >
-                    <i className="fas fa-sync-alt me-1"></i>
-                    Refresh Table
-                  </button>
-                </div>
+          <div className="card-body p-0">
+            {loading ? (
+              <div className="p-4">
+                {/* skeleton table */}
+                <div className="skeleton mb-3" />
+                <div className="skeleton mb-3" />
+                <div className="skeleton mb-3" />
+                <div className="skeleton mb-3" />
               </div>
-
-              {users.length === 0 ? (
-                <div className="py-4 text-center">
-                  <i className="fas fa-users fa-3x text-muted mb-3"></i>
-                  <p className="text-muted">No users found</p>
-                </div>
-              ) : (
-                <div className="table-responsive">
-                  <table className="table-striped table-hover table">
-                    <thead className="table-dark">
-                      <tr>
-                        <th>ID</th>
-                        <th>First Name</th>
-                        <th>Full Name</th>
-                        <th>Last Name</th>
-                        <th>Username</th>
-                        <th>Sex</th>
-                        <th>Birthday</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {users.map((user) => (
-                        <tr key={user.id || user.username}>
-                          <td>{user.id || "N/A"}</td>
-                          <td>{user.firstname || "N/A"}</td>
-                          <td>{user.fullname || "N/A"}</td>
-                          <td>{user.lastname || "N/A"}</td>
+            ) : (
+              <div className="table-responsive">
+                <table className="table table-hover table-striped align-middle mb-0">
+                  <thead className="table-light">
+                    <tr>
+                      <th className="text-center" style={{ width: 70 }}>
+                        #
+                      </th>
+                      <th>Titlename</th>
+                      <th>Firstname</th>
+                      <th>Lastname</th>
+                      <th>Username</th>
+                      <th>Password (hashed/plain)</th>
+                      <th>Address</th>
+                      <th>Sex</th>
+                      <th>Birthday</th>
+                      <th className="text-center" style={{ width: 120 }}>
+                        Edit
+                      </th>
+                      <th className="text-center" style={{ width: 120 }}>
+                        Delete
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.map((item, idx) => {
+                      const rowClass =
+                        "row-anim " +
+                        (flashIds.includes(item.id) ? "flash" : "");
+                      return (
+                        <tr
+                          key={item.id}
+                          className={rowClass}
+                          style={{ animationDelay: `${idx * 40}ms` }}
+                        >
+                          <td className="text-center">{item.id}</td>
+                          <td>{item.firstname}</td>
+                          <td>{item.fullname}</td>
+                          <td>{item.lastname}</td>
+                          <td className="fw-semibold">{item.username}</td>
                           <td>
-                            <span className="badge bg-secondary">
-                              {user.username || "N/A"}
-                            </span>
+                            {isHashed(item.password) ? (
+                              renderHash(item.password)
+                            ) : (
+                              <span className="d-inline-flex align-items-center gap-2">
+                                <code className="text-danger">plaintext</code>
+                                <button
+                                  className="btn btn-sm btn-outline-danger"
+                                  onClick={() => handleEncryptOneRow(item)}
+                                >
+                                  เข้ารหัสทันที
+                                </button>
+                              </span>
+                            )}
+                          </td>
+                          <td
+                            className="text-truncate"
+                            style={{ maxWidth: 260 }}
+                          >
+                            {item.address || "-"}
                           </td>
                           <td>
-                            <span
-                              className={`badge ${
-                                user.sex === "Male" ||
-                                user.sex === "male" ||
-                                user.sex === "ชาย"
-                                  ? "bg-primary"
-                                  : user.sex === "Female" ||
-                                      user.sex === "female" ||
-                                      user.sex === "หญิง"
-                                    ? "bg-danger"
-                                    : "bg-secondary"
-                              }`}
+                            {item.sex ? (
+                              <span className="badge bg-secondary-subtle text-dark">
+                                {item.sex}
+                              </span>
+                            ) : (
+                              "-"
+                            )}
+                          </td>
+                          <td>{formatDate(item.birthday)}</td>
+                          <td className="text-center">
+                            <Link
+                              href={`/admin/users/edit/${item.id}`}
+                              className="btn btn-sm btn-warning"
                             >
-                              {user.sex || "N/A"}
-                            </span>
+                              <i className="bi bi-pencil-square" /> Edit
+                            </Link>
                           </td>
-                          <td>
-                            {user.birthday
-                              ? new Date(user.birthday).toLocaleDateString()
-                              : "N/A"}
-                          </td>
-                          <td>
-                            <div className="btn-group" role="group">
-                              <button
-                                className="btn btn-outline-info btn-sm"
-                                onClick={() => handleViewUser(user)}
-                                title="View Details"
-                              >
-                                <i className="fas fa-eye"></i>
-                              </button>
-                              <button
-                                className="btn btn-outline-primary btn-sm"
-                                onClick={() => handleEditUser(user)}
-                                title="Edit User"
-                              >
-                                <i className="fas fa-edit"></i>
-                              </button>
-                              <button
-                                className="btn btn-outline-danger btn-sm"
-                                onClick={() =>
-                                  handleDeleteUser(
-                                    user.id || user.username,
-                                    user.username,
-                                  )
-                                }
-                                title="Delete User"
-                              >
-                                <i className="fas fa-trash"></i>
-                              </button>
-                            </div>
+                          <td className="text-center">
+                            <button
+                              className="btn btn-sm btn-danger"
+                              type="button"
+                              onClick={() => handleDelete(item.id)}
+                            >
+                              <i className="bi bi-trash3" /> Del
+                            </button>
                           </td>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
+                      );
+                    })}
+                    {!filtered.length && (
+                      <tr>
+                        <td
+                          colSpan={11}
+                          className="text-center py-4 text-muted"
+                        >
+                          ไม่พบข้อมูลที่ตรงกับ “{q}”
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          <div className="card-footer small text-muted">
+            รวมทั้งหมด: {items.length} รายการ • แสดง: {filtered.length} รายการ
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

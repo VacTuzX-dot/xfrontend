@@ -1,71 +1,71 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Swal from 'sweetalert2';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Swal from "sweetalert2";
 
 export default function Register() {
   const router = useRouter();
   const [formData, setFormData] = useState({
-    username: '',
-    password: '',
-    title: '',
-    firstname: '',
-    lastname: '',
-    address: '',
-    sex: '',
-    birthday: '',
-    acceptTerms: false
+    username: "",
+    password: "",
+    firstname: "",
+    fullname: "",
+    lastname: "",
+    address: "",
+    sex: "",
+    birthday: "",
+    acceptTerms: false,
   });
   const [loading, setLoading] = useState(false);
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: type === "checkbox" ? checked : value,
     }));
   };
 
   const validateForm = () => {
     if (!formData.username.trim()) {
-      Swal.fire('Error', 'กรุณากรอกชื่อผู้ใช้', 'error');
+      Swal.fire("Error", "กรุณากรอกชื่อผู้ใช้", "error");
       return false;
     }
     if (!formData.password.trim()) {
-      Swal.fire('Error', 'กรุณากรอกรหัสผ่าน', 'error');
+      Swal.fire("Error", "กรุณากรอกรหัสผ่าน", "error");
       return false;
     }
     if (formData.password.length < 6) {
-      Swal.fire('Error', 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร', 'error');
+      Swal.fire("Error", "รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร", "error");
       return false;
     }
-    if (!formData.title) {
-      Swal.fire('Error', 'กรุณาเลือกคำนำหน้าชื่อ', 'error');
+    if (!formData.firstname) {
+      Swal.fire("Error", "กรุณาเลือกคำนำหน้าชื่อ", "error");
       return false;
     }
-    if (!formData.firstname.trim()) {
-      Swal.fire('Error', 'กรุณากรอกชื่อ', 'error');
+    if (!formData.fullname.trim()) {
+      Swal.fire("Error", "กรุณากรอกชื่อ", "error");
       return false;
     }
     if (!formData.lastname.trim()) {
-      Swal.fire('Error', 'กรุณากรอกนามสกุล', 'error');
+      Swal.fire("Error", "กรุณากรอกนามสกุล", "error");
       return false;
     }
     if (!formData.address.trim()) {
-      Swal.fire('Error', 'กรุณากรอกที่อยู่', 'error');
+      Swal.fire("Error", "กรุณากรอกที่อยู่", "error");
       return false;
     }
     if (!formData.sex) {
-      Swal.fire('Error', 'กรุณาเลือกเพศ', 'error');
+      Swal.fire("Error", "กรุณาเลือกเพศ", "error");
       return false;
     }
     if (!formData.birthday) {
-      Swal.fire('Error', 'กรุณาเลือกวันเกิด', 'error');
+      Swal.fire("Error", "กรุณาเลือกวันเกิด", "error");
       return false;
     }
     if (!formData.acceptTerms) {
-      Swal.fire('Error', 'กรุณายอมรับเงื่อนไขการใช้งาน', 'error');
+      Swal.fire("Error", "กรุณายอมรับเงื่อนไขการใช้งาน", "error");
       return false;
     }
     return true;
@@ -73,16 +73,16 @@ export default function Register() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
 
     setLoading(true);
 
     try {
-      const response = await fetch('/api/users', {
-        method: 'POST',
+      const response = await fetch("/api/users", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(formData),
       });
@@ -90,23 +90,23 @@ export default function Register() {
       if (response.ok) {
         const result = await response.json();
         await Swal.fire({
-          title: 'สำเร็จ!',
-          text: 'ลงทะเบียนเรียบร้อยแล้ว',
-          icon: 'success',
-          confirmButtonText: 'ตกลง'
+          fullname: "สำเร็จ!",
+          text: "ลงทะเบียนเรียบร้อยแล้ว",
+          icon: "success",
+          confirmButtonText: "ตกลง",
         });
-        router.push('/signin');
+        router.push("/signin");
       } else {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'เกิดข้อผิดพลาดในการลงทะเบียน');
+        throw new Error(errorData.error || "เกิดข้อผิดพลาดในการลงทะเบียน");
       }
     } catch (error) {
-      console.error('Registration error:', error);
+      console.error("Registration error:", error);
       Swal.fire({
-        title: 'ข้อผิดพลาด!',
-        text: error.message || 'เกิดข้อผิดพลาดในการลงทะเบียน',
-        icon: 'error',
-        confirmButtonText: 'ตกลง'
+        fullname: "ข้อผิดพลาด!",
+        text: error.message || "เกิดข้อผิดพลาดในการลงทะเบียน",
+        icon: "error",
+        confirmButtonText: "ตกลง",
       });
     } finally {
       setLoading(false);
@@ -164,15 +164,15 @@ export default function Register() {
 
                 {/* Title */}
                 <div className="mb-3">
-                  <label htmlFor="title" className="form-label">
+                  <label htmlFor="firstname" className="form-label">
                     <i className="bi bi-person-badge me-1"></i>
                     คำนำหน้าชื่อ *
                   </label>
                   <select
                     className="form-select"
-                    id="title"
-                    name="title"
-                    value={formData.title}
+                    id="firstname"
+                    name="firstname"
+                    value={formData.firstname}
                     onChange={handleInputChange}
                     required
                   >
@@ -186,16 +186,16 @@ export default function Register() {
                 {/* First Name and Last Name Row */}
                 <div className="row mb-3">
                   <div className="col-md-6">
-                    <label htmlFor="firstName" className="form-label">
+                    <label htmlFor="fullname" className="form-label">
                       <i className="bi bi-person me-1"></i>
                       ชื่อ *
                     </label>
                     <input
                       type="text"
                       className="form-control"
-                      id="firstname"
-                      name="firstname"
-                      value={formData.firstname}
+                      id="fullname"
+                      name="fullname"
+                      value={formData.fullname}
                       onChange={handleInputChange}
                       placeholder="กรอกชื่อ"
                       required
@@ -252,7 +252,7 @@ export default function Register() {
                           name="sex"
                           id="male"
                           value="ชาย"
-                          checked={formData.sex === 'ชาย'}
+                          checked={formData.sex === "ชาย"}
                           onChange={handleInputChange}
                           required
                         />
@@ -267,7 +267,7 @@ export default function Register() {
                           name="sex"
                           id="female"
                           value="หญิง"
-                          checked={formData.sex === 'หญิง'}
+                          checked={formData.sex === "หญิง"}
                           onChange={handleInputChange}
                           required
                         />
@@ -307,8 +307,15 @@ export default function Register() {
                       required
                     />
                     <label className="form-check-label" htmlFor="acceptTerms">
-                      ฉันยอมรับ <a href="#" className="text-decoration-none">เงื่อนไขการใช้งาน</a> และ{' '}
-                      <a href="#" className="text-decoration-none">นโยบายความเป็นส่วนตัว</a> *
+                      ฉันยอมรับ{" "}
+                      <a href="#" className="text-decoration-none">
+                        เงื่อนไขการใช้งาน
+                      </a>{" "}
+                      และ{" "}
+                      <a href="#" className="text-decoration-none">
+                        นโยบายความเป็นส่วนตัว
+                      </a>{" "}
+                      *
                     </label>
                   </div>
                 </div>
@@ -322,7 +329,11 @@ export default function Register() {
                   >
                     {loading ? (
                       <>
-                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        <span
+                          className="spinner-border spinner-border-sm me-2"
+                          role="status"
+                          aria-hidden="true"
+                        ></span>
                         กำลังลงทะเบียน...
                       </>
                     ) : (
@@ -337,7 +348,7 @@ export default function Register() {
                 {/* Login Link */}
                 <div className="text-center mt-3">
                   <p className="mb-0">
-                    มีบัญชีอยู่แล้ว?{' '}
+                    มีบัญชีอยู่แล้ว?{" "}
                     <a href="/signin" className="text-decoration-none">
                       เข้าสู่ระบบ
                     </a>
