@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Swal from 'sweetalert2';
-import bcrypt from 'bcryptjs';
 
 export default function Login() {
   const router = useRouter();
@@ -43,9 +42,6 @@ export default function Login() {
     setLoading(true);
 
     try {
-      // Hash password for security
-      const hashedPassword = await bcrypt.hash(formData.password, 10);
-      
       const response = await fetch('/api/users', {
         method: 'POST',
         headers: {
@@ -53,13 +49,13 @@ export default function Login() {
         },
         body: JSON.stringify({
           username: formData.username,
-          password: hashedPassword,
+          password: formData.password,
           action: 'login'
         }),
       });
 
       if (response.ok) {
-        const result = await response.json();
+        await response.json();
         
         // Store user data if remember me is checked
         if (formData.rememberMe) {
@@ -84,6 +80,14 @@ export default function Login() {
         });
         
         router.push('/');
+      } else if (response.status === 404) {
+        await Swal.fire({
+          title: 'ไม่พบผู้ใช้!',
+          text: 'กรุณาสมัครสมาชิกก่อนเข้าสู่ระบบ',
+          icon: 'warning',
+          confirmButtonText: 'ไปสมัครสมาชิก'
+        });
+        router.push('/signup');
       } else {
         const errorData = await response.json();
         throw new Error(errorData.error || 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');

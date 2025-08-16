@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import bcrypt from "bcryptjs";
 
 export async function GET() {
   try {
@@ -26,6 +27,33 @@ export async function GET() {
 export async function POST(request) {
   try {
     const body = await request.json();
+
+    // Handle login action by checking existing users
+    if (body.action === "login") {
+      const res = await fetch("http://itdev.cmtc.ac.th:3000/api/users", {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+
+      const users = await res.json();
+      const user = users.find((u) => u.username === body.username);
+
+      if (user && (await bcrypt.compare(body.password, user.password))) {
+        return NextResponse.json(user);
+      }
+
+      return NextResponse.json(
+        { error: "User not found" },
+        { status: 404 },
+      );
+    }
+
+    // Default behavior for user creation
     const res = await fetch("http://itdev.cmtc.ac.th:3000/api/users", {
       method: "POST",
       headers: {

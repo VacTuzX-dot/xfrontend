@@ -50,3 +50,31 @@ export async function GET(request, { params }) {
     );
   }
 }
+
+export async function PUT(request, { params }) {
+  try {
+    const { id } = params;
+    const body = await request.json();
+
+    const res = await fetch(`http://itdev.cmtc.ac.th:3000/api/users/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+      throw new Error(`HTTP error! status: ${res.status}`);
+    }
+
+    const data = await res.json();
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error("Error updating user:", error);
+    return NextResponse.json(
+      { error: "Failed to update user" },
+      { status: 500 },
+    );
+  }
+}

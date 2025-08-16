@@ -113,6 +113,54 @@ export default function AdminUsers() {
     }
   };
 
+  const handleEditUser = async (user) => {
+    const { value: formValues } = await Swal.fire({
+      title: "Edit User",
+      html: `
+        <input id="swal-firstname" class="swal2-input" placeholder="First Name" value="${user.firstname || ''}">
+        <input id="swal-lastname" class="swal2-input" placeholder="Last Name" value="${user.lastname || ''}">
+        <input id="swal-username" class="swal2-input" placeholder="Username" value="${user.username || ''}">
+      `,
+      focusConfirm: false,
+      showCancelButton: true,
+      preConfirm: () => ({
+        firstname: document.getElementById('swal-firstname').value,
+        lastname: document.getElementById('swal-lastname').value,
+        username: document.getElementById('swal-username').value,
+      }),
+    });
+
+    if (formValues) {
+      try {
+        const res = await fetch(`/api/users/${user.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(formValues),
+        });
+
+        if (!res.ok) throw new Error('Failed to update user');
+
+        await Swal.fire({
+          title: 'Updated!',
+          text: `User "${formValues.username}" has been updated.`,
+          icon: 'success',
+          confirmButtonText: 'OK',
+        });
+
+        refreshTableOnly();
+      } catch (err) {
+        await Swal.fire({
+          title: 'Error!',
+          text: 'Failed to update user. Please try again.',
+          icon: 'error',
+          confirmButtonText: 'OK',
+        });
+      }
+    }
+  };
+
   const handleViewUser = (user) => {
     // Calculate age from birthday
     const calculateAge = (birthday) => {
@@ -325,6 +373,13 @@ export default function AdminUsers() {
                                 title="View Details"
                               >
                                 <i className="fas fa-eye"></i>
+                              </button>
+                              <button
+                                className="btn btn-outline-primary btn-sm"
+                                onClick={() => handleEditUser(user)}
+                                title="Edit User"
+                              >
+                                <i className="fas fa-edit"></i>
                               </button>
                               <button
                                 className="btn btn-outline-danger btn-sm"
