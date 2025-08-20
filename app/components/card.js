@@ -40,12 +40,12 @@ const cardVariants = {
 
 export default function Card() {
   return (
-    <div className="container py-5">
+    <div className="container py-5 ">
       <div className="row justify-content-center">
         {cardData.map((card, i) => (
           <motion.div
             key={card.id}
-            className="col-12 col-sm-10 col-md-6 col-lg-4 mb-4 d-flex"
+            className="col-12 col-sm-10 col-md-6 col-lg-4 mb-4 d-flex "
             custom={i}
             initial="hidden"
             animate="visible"
@@ -55,7 +55,7 @@ export default function Card() {
               boxShadow: "0 8px 32px rgba(0,0,0,0.15)",
             }}
           >
-            <div className="card h-100 shadow-sm border-0 rounded-4 overflow-hidden w-100">
+            <div className="card h-100 shadow-sm border-0 rounded-4 overflow-hidden w-100 bg-dark text-light">
               <motion.img
                 src={card.image}
                 alt={card.title}
@@ -67,7 +67,7 @@ export default function Card() {
               />
               <div className="card-body d-flex flex-column">
                 <h5 className="card-title fw-bold">{card.title}</h5>
-                <p className="card-text text-muted flex-grow-1">{card.text}</p>
+                <p className="card-text text-light flex-grow-1">{card.text}</p>
                 <a
                   href="https://www.linsoul.com/products"
                   target="_blank"

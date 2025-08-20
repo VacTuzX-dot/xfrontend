@@ -28,7 +28,7 @@ export default function Footer() {
       confirmButtonText: "Send",
       focusConfirm: false,
       width: 600,
-      color: "#fff",
+      color: "#fdffff",
       background: "#212529",
       customClass: {
         popup: "border border-secondary rounded-4",
@@ -68,22 +68,22 @@ export default function Footer() {
   const year = new Date().getFullYear();
 
   return (
-    <footer className="bg-dark border-top border-secondary py-2">
+    <footer className="text-dark border-top border-secondary py-2">
       <div className="container d-flex flex-column flex-md-row align-items-center justify-content-between gap-2">
         {/* Left: brand / copyright */}
-        <div className="text-light-50 small">
-          © {year}{" "}
-          <span className="text-light fw-semibold">Taweesak Numma</span>
+        <div className="small">
+          © {year} <span className=" fw-semibold">Taweesak Numma</span>
         </div>
 
         {/* Middle: quick links */}
         <nav className="d-flex align-items-center gap-3">
           <Link
             href="https://github.com/vactuzx-dot"
-            className="btn btn-outline-light btn-sm d-inline-flex align-items-center gap-2"
+            className="btn btn-outline-dark btn-sm d-inline-flex align-items-center gap-2"
             aria-label="GitHub"
             target="_blank"
             rel="noopener noreferrer"
+            style={{ textDecoration: "none", transition: "0.4s ease" }}
           >
             {/* GitHub icon (inline SVG, no extra deps) */}
             <svg
@@ -100,10 +100,11 @@ export default function Footer() {
 
           <Link
             href="https://facebook.com/vactuz"
-            className="btn btn-outline-light btn-sm d-inline-flex align-items-center gap-2"
+            className="btn btn-outline-dark btn-sm d-inline-flex align-items-center gap-2"
             aria-label="Facebook"
             target="_blank"
             rel="noopener noreferrer"
+            style={{ textDecoration: "none", transition: "0.4s ease" }}
           >
             {/* Facebook icon */}
             <svg
@@ -139,10 +140,10 @@ export default function Footer() {
         </nav>
 
         {/* Right: quick email */}
-        <div className="small text-secondary">
+        <div className="small text-dark">
           <a
             href="mailto:taweesaknumma@gmail.com"
-            className="link-light text-decoration-none"
+            className="link-dark text-decoration-none"
           >
             taweesaknumma@gmail.com
           </a>

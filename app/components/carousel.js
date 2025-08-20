@@ -18,7 +18,7 @@ export default function Carousel() {
         width: "100vw",
         height: "60vh",
         minHeight: 750,
-        maxWidth: "100vw",
+        maxWidth: "100%",
         margin: "0 auto",
         borderRadius: 18,
         overflow: "hidden",
