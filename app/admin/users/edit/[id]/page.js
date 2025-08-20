@@ -28,7 +28,7 @@ export default function Page() {
   // เก็บค่า user ที่ดึงมา (รวมถึง password เดิม แต่ไม่โชว์ใน UI)
   const [originalUser, setOriginalUser] = useState(null);
 
-  const API_BASE = "http://itdev.cmtc.ac.th:3000/api/users";
+  const API_BASE = "https://backend-nextjs-virid.vercel.app/api/users";
 
   useEffect(() => {
     async function getUser() {

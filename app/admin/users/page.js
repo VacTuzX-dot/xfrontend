@@ -506,7 +506,7 @@ export default function Page() {
             ) : (
               <div className="table-responsive">
                 <table className="table table-hover table-striped align-middle mb-0">
-                  <thead className="table-light">
+                  <thead className="table-dark">
                     <tr>
                       <th className="text-center" style={{ width: 40 }}>
                         <input
@@ -582,7 +582,7 @@ export default function Page() {
                           </td>
                           <td>
                             {item.sex ? (
-                              <span className="badge bg-secondary-subtle text-light">
+                              <span className="badge bg-secondary-subtle text-dark">
                                 {item.sex}
                               </span>
                             ) : (

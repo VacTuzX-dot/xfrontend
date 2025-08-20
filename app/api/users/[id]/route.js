@@ -4,12 +4,15 @@ export async function DELETE(request, { params }) {
   try {
     const { id } = params;
 
-    const res = await fetch(`http://itdev.cmtc.ac.th:3000/api/users/${id}`, {
-      method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
+    const res = await fetch(
+      `https://backend-nextjs-virid.vercel.app/api/users/${id}`,
+      {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
 
     if (!res.ok) {
       throw new Error(`HTTP error! status: ${res.status}`);
@@ -30,11 +33,14 @@ export async function GET(request, { params }) {
   try {
     const { id } = params;
 
-    const res = await fetch(`http://itdev.cmtc.ac.th:3000/api/users/${id}`, {
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
+    const res = await fetch(
+      `https://backend-nextjs-virid.vercel.app/api/users/${id}`,
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
 
     if (!res.ok) {
       throw new Error(`HTTP error! status: ${res.status}`);
@@ -56,13 +62,16 @@ export async function PUT(request, { params }) {
     const { id } = params;
     const body = await request.json();
 
-    const res = await fetch(`http://itdev.cmtc.ac.th:3000/api/users/${id}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-    });
+    const res = await fetch(
+      `https://backend-nextjs-virid.vercel.app/api/users/${id}`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      }
+    );
 
     if (!res.ok) {
       throw new Error(`HTTP error! status: ${res.status}`);
