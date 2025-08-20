@@ -279,7 +279,7 @@ export default function Register() {
                   </div>
                   <div className="col-md-6">
                     <label htmlFor="birthDate" className="form-label">
-                      <i className="bi bi-calendar me-1"></i>
+                      <i className="bi bi-calendar me-1 "></i>
                       วันเกิด *
                     </label>
                     <input
@@ -291,6 +291,14 @@ export default function Register() {
                       onChange={handleInputChange}
                       required
                     />
+                    <style jsx>{`
+                      #birthday::-webkit-calendar-picker-indicator {
+                        filter: invert(1);
+                      }
+                      #birthday {
+                        color-scheme: dark;
+                      }
+                    `}</style>
                   </div>
                 </div>
 
