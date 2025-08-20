@@ -30,7 +30,7 @@ export default function RootLayout({ children }) {
           href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css"
         />
       </head>
-      <body className={`${prompt.variable} antialiased`} data-bs-theme="dark">
+      <body className={`${prompt.variable} antialiased`} data-bs-theme="light">
         <Navbar />
         <ReactLenis root>{children}</ReactLenis>
         <Footer />

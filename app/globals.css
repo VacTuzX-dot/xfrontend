@@ -26,6 +26,14 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }  */
 /* Custom styles for signup form */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  border: 0;
+  font-family: prompt, sans-serif;
+}
+
 .signup-form-container {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   min-height: 100vh;

@@ -1,34 +1,34 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Swal from 'sweetalert2';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Swal from "sweetalert2";
 
 export default function Login() {
   const router = useRouter();
   const [formData, setFormData] = useState({
-    username: '',
-    password: '',
-    rememberMe: false
+    username: "",
+    password: "",
+    rememberMe: false,
   });
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: type === "checkbox" ? checked : value,
     }));
   };
 
   const validateForm = () => {
     if (!formData.username.trim()) {
-      Swal.fire('Error', 'กรุณากรอกชื่อผู้ใช้', 'error');
+      Swal.fire("Error", "กรุณากรอกชื่อผู้ใช้", "error");
       return false;
     }
     if (!formData.password.trim()) {
-      Swal.fire('Error', 'กรุณากรอกรหัสผ่าน', 'error');
+      Swal.fire("Error", "กรุณากรอกรหัสผ่าน", "error");
       return false;
     }
     return true;
@@ -36,69 +36,75 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
 
     setLoading(true);
 
     try {
-      const response = await fetch('/api/users', {
-        method: 'POST',
+      const response = await fetch("/api/users", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           username: formData.username,
           password: formData.password,
-          action: 'login'
+          action: "login",
         }),
       });
 
       if (response.ok) {
         await response.json();
-        
+
         // Store user data if remember me is checked
         if (formData.rememberMe) {
-          localStorage.setItem('user', JSON.stringify({
-            username: formData.username,
-            rememberMe: true
-          }));
+          localStorage.setItem(
+            "user",
+            JSON.stringify({
+              username: formData.username,
+              rememberMe: true,
+            })
+          );
         } else {
-          sessionStorage.setItem('user', JSON.stringify({
-            username: formData.username,
-            rememberMe: false
-          }));
+          sessionStorage.setItem(
+            "user",
+            JSON.stringify({
+              username: formData.username,
+              rememberMe: false,
+            })
+          );
         }
 
         await Swal.fire({
-          title: 'เข้าสู่ระบบสำเร็จ!',
+          title: "เข้าสู่ระบบสำเร็จ!",
           text: `ยินดีต้อนรับ ${formData.username}`,
-          icon: 'success',
-          confirmButtonText: 'ตกลง',
+          icon: "success",
+          confirmButtonText: "ตกลง",
           timer: 2000,
-          timerProgressBar: true
+          timerProgressBar: true,
         });
-        
-        router.push('/');
+
+        router.push("/");
       } else if (response.status === 404) {
         await Swal.fire({
-          title: 'ไม่พบผู้ใช้!',
-          text: 'กรุณาสมัครสมาชิกก่อนเข้าสู่ระบบ',
-          icon: 'warning',
-          confirmButtonText: 'ไปสมัครสมาชิก'
+          title: "ไม่พบผู้ใช้!",
+          text: "กรุณาสมัครสมาชิกก่อนเข้าสู่ระบบ",
+          icon: "warning",
+          confirmButtonText: "ไปสมัครสมาชิก",
         });
-        router.push('/signup');
+        router.push("/signup");
       } else {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
+        throw new Error(errorData.error || "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง");
       }
     } catch (error) {
-      console.error('Login error:', error);
+      console.error("Login error:", error);
       Swal.fire({
-        title: 'เข้าสู่ระบบไม่สำเร็จ!',
-        text: error.message || 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ',
-        icon: 'error',
-        confirmButtonText: 'ตกลง'
+        title: "เข้าสู่ระบบไม่สำเร็จ!",
+        text: error.message || "เกิดข้อผิดพลาดในการเข้าสู่ระบบ",
+        icon: "error",
+        confirmButtonText: "ตกลง",
       });
     } finally {
       setLoading(false);
@@ -107,11 +113,50 @@ export default function Login() {
 
   const handleForgotPassword = () => {
     Swal.fire({
-      title: 'ลืมรหัสผ่าน?',
-      text: 'กรุณาติดต่อผู้ดูแลระบบเพื่อรีเซ็ตรหัสผ่าน',
-      icon: 'info',
-      confirmButtonText: 'ตกลง'
+      title: "ลืมรหัสผ่าน?",
+      text: "กรุณาติดต่อผู้ดูแลระบบเพื่อรีเซ็ตรหัสผ่าน",
+      icon: "info",
+      confirmButtonText: "ตกลง",
     });
+  };
+
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+
+    const res = await fetch("http://itdev.cmtc.ac.th:3000/api/auth/login", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ username, password }),
+    });
+
+    const data = await res.json();
+    console.log(username);
+
+    if (data.token) {
+      localStorage.setItem("token", data.token);
+      await Swal.fire({
+        title: "เข้าสู่ระบบสำเร็จ!",
+        text: `ยินดีต้อนรับ ${username}`,
+        icon: "success",
+        confirmButtonText: "ตกลง",
+        timer: 2000,
+        timerProgressBar: true,
+      });
+      window.location.href = "/admin/users";
+    } else {
+      // Show error if username or password is incorrect
+      Swal.fire({
+        title: "เข้าสู่ระบบไม่สำเร็จ!",
+        text: "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง",
+        icon: "error",
+        confirmButtonText: "ตกลง",
+      });
+    }
   };
 
   return (
@@ -126,7 +171,7 @@ export default function Login() {
               </h3>
             </div>
             <div className="card-body p-4">
-              <form onSubmit={handleSubmit}>
+              <form onSubmit={handleLogin}>
                 {/* Username */}
                 <div className="mb-3">
                   <label htmlFor="username" className="form-label">
@@ -140,12 +185,10 @@ export default function Login() {
                     <input
                       type="text"
                       className="form-control"
-                      id="username"
-                      name="username"
-                      value={formData.username}
-                      onChange={handleInputChange}
-                      placeholder="กรอกชื่อผู้ใช้"
-                      required
+                      id="formGroupExampleInput"
+                      defaultValue={username}
+                      placeholder="Username"
+                      onChange={(e) => setUsername(e.target.value)}
                     />
                   </div>
                 </div>
@@ -163,19 +206,21 @@ export default function Login() {
                     <input
                       type={showPassword ? "text" : "password"}
                       className="form-control"
-                      id="password"
-                      name="password"
-                      value={formData.password}
-                      onChange={handleInputChange}
-                      placeholder="กรอกรหัสผ่าน"
-                      required
+                      id="formGroupExampleInput2"
+                      defaultValue={password}
+                      placeholder="Password"
+                      onChange={(e) => setPassword(e.target.value)}
                     />
                     <button
                       type="button"
                       className="btn btn-outline-secondary"
                       onClick={() => setShowPassword(!showPassword)}
                     >
-                      <i className={`bi ${showPassword ? 'bi-eye-slash' : 'bi-eye'}`}></i>
+                      <i
+                        className={`bi ${
+                          showPassword ? "bi-eye-slash" : "bi-eye"
+                        }`}
+                      ></i>
                     </button>
                   </div>
                 </div>
@@ -207,7 +252,11 @@ export default function Login() {
                   >
                     {loading ? (
                       <>
-                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        <span
+                          className="spinner-border spinner-border-sm me-2"
+                          role="status"
+                          aria-hidden="true"
+                        ></span>
                         กำลังเข้าสู่ระบบ...
                       </>
                     ) : (
@@ -223,8 +272,8 @@ export default function Login() {
                 <div className="text-center">
                   <div className="row">
                     <div className="col-6">
-                      <a 
-                        href="/signup" 
+                      <a
+                        href="/signup"
                         className="text-decoration-none text-primary"
                       >
                         <i className="bi bi-person-plus me-1"></i>
@@ -252,7 +301,11 @@ export default function Login() {
             <div className="card-body text-center py-2">
               <small className="text-muted">
                 <i className="bi bi-info-circle me-1"></i>
-                ยังไม่มีบัญชี? <a href="/signup" className="text-decoration-none">สมัครสมาชิก</a> ได้เลย
+                ยังไม่มีบัญชี?{" "}
+                <a href="/signup" className="text-decoration-none">
+                  สมัครสมาชิก
+                </a>{" "}
+                ได้เลย
               </small>
             </div>
           </div>

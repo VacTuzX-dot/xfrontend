@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 export default function About() {
   return (
     <>
-      <div className="container py-5">
+      <div className="container-fluid py-5 min-vh-100 d-flex align-items-center justify-content-center">
         <div className="row">
           <div className="col-md-8 mx-auto">
             <motion.h1
@@ -15,6 +15,23 @@ export default function About() {
             >
               About IEM Audiophile
             </motion.h1>
+            <motion.p
+              className="lead mb-4"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+            >
+              <img
+                style={{
+                  maxWidth: "100%",
+                  height: "auto",
+                  objectFit: "cover",
+                  borderRadius: "8px",
+                }}
+                src="https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fwww.headphonesty.com%2Fwp-content%2Fuploads%2F2024%2F07%2FPromotion_on_the_worldwide_shipping-1100x500.jpg&f=1&nofb=1&ipt=50c9ffd6aa1b6987d0bcfcebf64c71327aced7d9b4d2fc6764beafe009ba6ba7"
+                alt="About Us"
+              />
+            </motion.p>
             <motion.div
               className="card shadow-sm"
               initial={{ opacity: 0, scale: 0.95 }}

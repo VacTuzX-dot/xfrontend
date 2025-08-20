@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Swal from "sweetalert2";
 import bcrypt from "bcryptjs";
+import { useRouter } from "next/navigation";
 
 export default function Page() {
   const API = "/api/users";
@@ -11,8 +12,91 @@ export default function Page() {
   const [q, setQ] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const [flashIds, setFlashIds] = useState([]); // แถวที่จะทำไฮไลต์หลัง encrypt
+  const [selectedIds, setSelectedIds] = useState([]); // สำหรับเลือกหลาย user
+  const [selectAll, setSelectAll] = useState(false);
+  const router = useRouter();
 
   const prevItemsRef = useRef([]);
+
+  const filtered = useMemo(() => {
+    if (!q.trim()) return items;
+    const s = q.toLowerCase();
+    return items.filter(
+      (x) =>
+        (x.firstname || "").toLowerCase().includes(s) ||
+        (x.fullname || "").toLowerCase().includes(s) ||
+        (x.lastname || "").toLowerCase().includes(s) ||
+        (x.username || "").toLowerCase().includes(s) ||
+        (x.address || "").toLowerCase().includes(s) ||
+        (x.sex || "").toLowerCase().includes(s)
+    );
+  }, [items, q]);
+
+  // จัดการเลือก user ทีละคน
+  const handleSelectRow = (id) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
+  // จัดการเลือกทั้งหมด
+  const handleSelectAll = () => {
+    if (selectAll) {
+      setSelectedIds([]);
+      setSelectAll(false);
+    } else {
+      setSelectedIds(filtered.map((item) => item.id));
+      setSelectAll(true);
+    }
+  };
+
+  // อัปเดต selectAll ถ้า filtered หรือ selectedIds เปลี่ยน
+  useEffect(() => {
+    if (filtered.length === 0) {
+      setSelectAll(false);
+    } else {
+      setSelectAll(
+        filtered.length > 0 &&
+          filtered.every((item) => selectedIds.includes(item.id))
+      );
+    }
+  }, [filtered, selectedIds]);
+
+  // ลบผู้ใช้หลายคน
+  async function handleDeleteSelected() {
+    if (selectedIds.length === 0) return;
+    const { isConfirmed } = await Swal.fire({
+      icon: "warning",
+      title: `ลบผู้ใช้ที่เลือกทั้งหมด?`,
+      html: `คุณแน่ใจหรือไม่ว่าจะลบ <b>${selectedIds.length}</b> รายการ?`,
+      showCancelButton: true,
+      confirmButtonText: "ลบเลย",
+      cancelButtonText: "ยกเลิก",
+      confirmButtonColor: "#d33",
+    });
+    if (!isConfirmed) return;
+    let ok = 0,
+      fail = 0;
+    for (const id of selectedIds) {
+      try {
+        const res = await fetch(`${API}/${id}`, {
+          method: "DELETE",
+          headers: { Accept: "application/json" },
+        });
+        if (!res.ok) throw new Error("Delete failed");
+        ok++;
+      } catch (err) {
+        fail++;
+      }
+    }
+    await getUsers(false);
+    setSelectedIds([]);
+    Swal.fire({
+      icon: fail ? "warning" : "success",
+      title: fail ? "สำเร็จบางส่วน" : "สำเร็จ",
+      html: `ลบสำเร็จ: <b>${ok}</b> รายการ<br/>ล้มเหลว: <b>${fail}</b> รายการ`,
+    });
+  }
 
   async function getUsers(showSpinner = true) {
     try {
@@ -44,26 +128,18 @@ export default function Page() {
       setRefreshing(false);
     }
   }
-
   useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      window.location.href = "/signin";
+      return;
+    }
     getUsers(true);
+  }, []);
+  useEffect(() => {
     const interval = setInterval(() => getUsers(false), 15000); // 15s
     return () => clearInterval(interval);
   }, []);
-
-  const filtered = useMemo(() => {
-    if (!q.trim()) return items;
-    const s = q.toLowerCase();
-    return items.filter(
-      (x) =>
-        (x.firstname || "").toLowerCase().includes(s) ||
-        (x.fullname || "").toLowerCase().includes(s) ||
-        (x.lastname || "").toLowerCase().includes(s) ||
-        (x.username || "").toLowerCase().includes(s) ||
-        (x.address || "").toLowerCase().includes(s) ||
-        (x.sex || "").toLowerCase().includes(s)
-    );
-  }, [items, q]);
 
   const isHashed = (pwd) => typeof pwd === "string" && pwd.startsWith("$2"); // bcrypt marker
 
@@ -290,6 +366,14 @@ export default function Page() {
     }
   }
 
+  if (loading) {
+    return (
+      <div className="text-center">
+        <h1>Loading...</h1>
+      </div>
+    ); // หรือ return null เพื่อไม่ให้ render อะไร
+  }
+
   return (
     <>
       <style jsx>{`
@@ -377,8 +461,17 @@ export default function Page() {
                 placeholder="ค้นหา ชื่อ/สกุล/ผู้ใช้/ที่อยู่/เพศ..."
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                style={{ minWidth: 260 }}
+                style={{ minWidth: 300 }}
               />
+              {selectedIds.length > 0 && (
+                <button
+                  className="btn btn-danger"
+                  onClick={handleDeleteSelected}
+                >
+                  <i className="bi bi-trash3" /> ลบผู้ใช้ที่เลือก (
+                  {selectedIds.length})
+                </button>
+              )}
               <button
                 className="btn btn-outline-secondary"
                 onClick={() => {
@@ -415,6 +508,14 @@ export default function Page() {
                 <table className="table table-hover table-striped align-middle mb-0">
                   <thead className="table-light">
                     <tr>
+                      <th className="text-center" style={{ width: 40 }}>
+                        <input
+                          type="checkbox"
+                          checked={selectAll}
+                          onChange={handleSelectAll}
+                          aria-label="เลือกทั้งหมด"
+                        />
+                      </th>
                       <th className="text-center" style={{ width: 70 }}>
                         #
                       </th>
@@ -445,6 +546,14 @@ export default function Page() {
                           className={rowClass}
                           style={{ animationDelay: `${idx * 40}ms` }}
                         >
+                          <td className="text-center">
+                            <input
+                              type="checkbox"
+                              checked={selectedIds.includes(item.id)}
+                              onChange={() => handleSelectRow(item.id)}
+                              aria-label={`เลือกผู้ใช้ ${item.id}`}
+                            />
+                          </td>
                           <td className="text-center">{item.id}</td>
                           <td>{item.firstname}</td>
                           <td>{item.fullname}</td>
@@ -473,7 +582,7 @@ export default function Page() {
                           </td>
                           <td>
                             {item.sex ? (
-                              <span className="badge bg-secondary-subtle text-dark">
+                              <span className="badge bg-secondary-subtle text-light">
                                 {item.sex}
                               </span>
                             ) : (
@@ -517,8 +626,12 @@ export default function Page() {
             )}
           </div>
 
-          <div className="card-footer small text-muted">
-            รวมทั้งหมด: {items.length} รายการ • แสดง: {filtered.length} รายการ
+          <div className="card-footer small text-muted d-flex flex-wrap align-items-center gap-2">
+            <span>
+              รวมทั้งหมด: {items.length} รายการ • แสดง: {filtered.length} รายการ
+              {selectedIds.length > 0 &&
+                ` • เลือกแล้ว: ${selectedIds.length} รายการ`}
+            </span>
           </div>
         </div>
       </div>
