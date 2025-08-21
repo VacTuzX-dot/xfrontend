@@ -3,7 +3,7 @@ import { useState, useCallback, useMemo } from "react";
 import { Container, Form, Button } from "react-bootstrap";
 import { motion, AnimatePresence } from "framer-motion";
 
-const BG_IMAGE = "/images/bg.PNG";
+const BG_IMAGE = "/images/bg.png";
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function ContactPage() {
