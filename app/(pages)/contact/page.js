@@ -2,6 +2,7 @@
 import { useState, useCallback, useMemo } from "react";
 import { Container, Form, Button } from "react-bootstrap";
 import { motion, AnimatePresence } from "framer-motion";
+import Image from "next/image";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -15,9 +16,11 @@ export default function ContactPage() {
     return EMAIL_REGEX.test(form.email);
   }, [form.email]);
 
-  // Memoize form validation
+  // Memoize form validation (explicit booleans)
   const isFormValid = useMemo(() => {
-    return form.email && isEmailValid && form.message.trim();
+    return (
+      Boolean(form.email) && isEmailValid && form.message.trim().length > 0
+    );
   }, [form.email, isEmailValid, form.message]);
 
   // Memoize change handler
@@ -95,15 +98,13 @@ export default function ContactPage() {
             height: "100%",
           }}
         >
-          <img
+          <Image
             src="/images/bg.png"
             alt="Background"
-            className="w-100 h-100"
-            style={{
-              objectFit: "cover",
-            }}
-            loading="lazy"
-            fetchPriority="high"
+            fill
+            priority
+            sizes="100vw"
+            style={{ objectFit: "cover" }}
           />
         </motion.div>
         <div
@@ -167,6 +168,7 @@ export default function ContactPage() {
                 value={form.name}
                 onChange={handleChange}
                 disabled={loading}
+                autoComplete="name"
                 style={{
                   background: "rgba(255, 255, 255, 0.8)",
                   border: "1px solid rgba(0, 0, 0, 0.1)",
@@ -185,7 +187,8 @@ export default function ContactPage() {
                 onChange={handleChange}
                 required
                 disabled={loading}
-                isInvalid={form.email && !isEmailValid}
+                isInvalid={form.email.length > 0 && !isEmailValid}
+                autoComplete="email"
                 style={{
                   background: "rgba(255, 255, 255, 0.8)",
                   border: "1px solid rgba(0, 0, 0, 0.1)",
@@ -211,6 +214,7 @@ export default function ContactPage() {
                 required
                 disabled={loading}
                 onKeyDown={handleKeyDown}
+                autoComplete="off"
                 style={{
                   background: "rgba(255, 255, 255, 0.8)",
                   border: "1px solid rgba(0, 0, 0, 0.1)",
@@ -277,8 +281,8 @@ export default function ContactPage() {
         .contact-card {
           max-width: 720px;
           background: rgba(255, 255, 255, 0.9);
-          backdrop-filter: blur(8px);
-          -webkit-backdrop-filter: blur(8px);
+          backdrop-filter: blur(6px);
+          -webkit-backdrop-filter: blur(6px);
           border: 1px solid rgba(0, 0, 0, 0.7);
           box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
         }

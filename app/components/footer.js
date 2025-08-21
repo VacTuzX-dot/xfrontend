@@ -68,11 +68,11 @@ export default function Footer() {
   const year = new Date().getFullYear();
 
   return (
-    <footer className="text-dark border-top border-secondary py-2">
-      <div className="container d-flex flex-column flex-md-row align-items-center justify-content-between gap-2">
+    <footer className="bg-light border-top border-secondary py-4">
+      <div className="container d-flex flex-column flex-md-row align-items-center justify-content-between gap-3">
         {/* Left: brand / copyright */}
         <div className="small">
-          © {year} <span className=" fw-semibold">Taweesak Numma</span>
+          © {year} <span className="fw-semibold">Taweesak Numma</span>
         </div>
 
         {/* Middle: quick links */}
@@ -83,7 +83,7 @@ export default function Footer() {
             aria-label="GitHub"
             target="_blank"
             rel="noopener noreferrer"
-            style={{ textDecoration: "none", transition: "0.4s ease" }}
+            style={{ textDecoration: "none", transition: "all 0.4s ease" }}
           >
             {/* GitHub icon (inline SVG, no extra deps) */}
             <svg
