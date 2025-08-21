@@ -1,12 +1,46 @@
 "use client";
 import { motion } from "framer-motion";
 
+const BG_IMAGE = "/images/bg.png";
+
 export default function About() {
   return (
-    <>
-      <div className="container-fluid py-5 min-vh-100 d-flex align-items-center justify-content-center">
+    <div className="position-relative min-vh-100 text-white">
+      {/* Background Image */}
+      <div
+        className="position-absolute top-0 start-0 w-100 h-100"
+        style={{
+          zIndex: -999,
+          backgroundColor: "#0a0a0a",
+          opacity: 1,
+          filter: "blur(4px)",
+        }}
+      >
+        <img
+          src={BG_IMAGE}
+          alt="Background"
+          className="w-100 h-100"
+          style={{
+            objectFit: "cover",
+            opacity: 0.6,
+          }}
+        />
+      </div>
+
+      {/* Content */}
+      <div className="container py-5">
         <div className="row">
-          <div className="col-md-8 mx-auto">
+          <div
+            className="col-md-8 mx-auto"
+            style={{
+              background: "rgba(0,0,0,0.7)",
+              borderRadius: "16px",
+              padding: "2rem",
+              backdropFilter: "blur(10px)",
+              WebkitBackdropFilter: "blur(10px)",
+              border: "1px solid rgba(255,255,255,0.1)",
+            }}
+          >
             <motion.h1
               className="mb-4"
               initial={{ opacity: 0, y: -30 }}
@@ -84,6 +118,6 @@ export default function About() {
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }

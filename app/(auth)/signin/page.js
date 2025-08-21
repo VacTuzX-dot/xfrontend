@@ -3,6 +3,20 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Swal from "sweetalert2";
+import { motion } from "framer-motion";
+
+const BG_IMAGE = "/images/bg.png";
+
+const fadeIn = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.6,
+    },
+  },
+};
 
 export default function Login() {
   const router = useRouter();
@@ -163,26 +177,81 @@ export default function Login() {
   };
 
   return (
-    <div className="container-fluid min-vh-100 d-flex align-items-center justify-content-center">
-      <div className="row w-100 justify-content-center">
-        <div className="col-md-6 col-lg-4 col-xl-3">
-          <div className="card shadow-lg border-0">
-            <div className="card-header bg-primary text-white text-center py-3">
-              <h3 className="mb-0">
+    <div className="position-relative min-vh-100">
+      {/* Background Image */}
+      <div
+        className="position-absolute top-0 start-0 w-100 h-100"
+        style={{
+          zIndex: -1,
+          backgroundColor: "#0a0a0a",
+        }}
+      >
+        <img
+          src={BG_IMAGE}
+          alt="Background"
+          className="w-100 h-100"
+          style={{
+            objectFit: "cover",
+            opacity: 0.6,
+          }}
+        />
+        <div
+          className="position-absolute top-0 start-0 w-100 h-100"
+          style={{
+            background:
+              "linear-gradient(180deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.5) 100%)",
+            backdropFilter: "blur(5px)",
+          }}
+        />
+      </div>
+
+      <div
+        className="container-fluid min-vh-100 d-flex align-items-center justify-content-center"
+        style={{ position: "relative", zIndex: 1 }}
+      >
+        <div className="row w-100 justify-content-center">
+          <div className="col-md-6 col-lg-4 col-xl-3">
+            <motion.div
+              initial="hidden"
+              animate="visible"
+              variants={fadeIn}
+              className="rounded-3"
+              style={{
+                background: "rgba(0,0,0,0.7)",
+                backdropFilter: "blur(10px)",
+                WebkitBackdropFilter: "blur(10px)",
+                border: "1px solid rgba(255,255,255,0.1)",
+              }}
+            />
+            <div className="text-center py-4 border-bottom border-light border-opacity-10">
+              <motion.h3
+                className="mb-0 text-white"
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+              >
                 <i className="bi bi-box-arrow-in-right me-2"></i>
                 เข้าสู่ระบบ
-              </h3>
+              </motion.h3>
             </div>
-            <div className="card-body p-4">
+            <div className="p-4">
               <form onSubmit={handleLogin}>
                 {/* Username */}
                 <div className="mb-3">
-                  <label htmlFor="username" className="form-label">
+                  <label htmlFor="username" className="form-label text-light">
                     <i className="bi bi-person me-1"></i>
                     ชื่อผู้ใช้
                   </label>
                   <div className="input-group">
-                    <span className="input-group-text">
+                    <span
+                      className="input-group-text"
+                      style={{
+                        background: "rgba(255,255,255,0.1)",
+                        border: "1px solid rgba(255,255,255,0.2)",
+                        borderRight: "none",
+                        color: "#fff",
+                      }}
+                    >
                       <i className="bi bi-person"></i>
                     </span>
                     <input
@@ -198,8 +267,8 @@ export default function Login() {
 
                 {/* Password */}
                 <div className="mb-3">
-                  <label htmlFor="password" className="form-label">
-                    <i className="bi bi-lock me-1"></i>
+                  <label htmlFor="password" className="form-label text-light">
+                    <i className="bi bi-lock me-1 "></i>
                     รหัสผ่าน
                   </label>
                   <div className="input-group">
@@ -239,7 +308,10 @@ export default function Login() {
                       checked={formData.rememberMe}
                       onChange={handleInputChange}
                     />
-                    <label className="form-check-label" htmlFor="rememberMe">
+                    <label
+                      className="form-check-label text-light"
+                      htmlFor="rememberMe"
+                    >
                       <i className="bi bi-check-circle me-1"></i>
                       จำฉันไว้
                     </label>
@@ -295,21 +367,19 @@ export default function Login() {
                     </div>
                   </div>
                 </div>
+                <div className="card mt-3 border-0 ">
+                  <div className="card-body text-center py-2">
+                    <small className="text-muted">
+                      <i className="bi bi-info-circle me-1"></i>
+                      ยังไม่มีบัญชี?{" "}
+                      <a href="/signup" className="text-decoration-none">
+                        สมัครสมาชิก
+                      </a>{" "}
+                      ได้เลย
+                    </small>
+                  </div>
+                </div>
               </form>
-            </div>
-          </div>
-
-          {/* Additional Info Card */}
-          <div className="card mt-3 border-0 ">
-            <div className="card-body text-center py-2">
-              <small className="text-muted">
-                <i className="bi bi-info-circle me-1"></i>
-                ยังไม่มีบัญชี?{" "}
-                <a href="/signup" className="text-decoration-none">
-                  สมัครสมาชิก
-                </a>{" "}
-                ได้เลย
-              </small>
             </div>
           </div>
         </div>
