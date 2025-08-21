@@ -1,8 +1,6 @@
 "use client";
 import { motion } from "framer-motion";
 
-const BG_IMAGE = "/images/bg.png";
-
 export default function About() {
   return (
     <div className="position-relative min-vh-100 text-white">
@@ -17,7 +15,7 @@ export default function About() {
         }}
       >
         <img
-          src={BG_IMAGE}
+          src="/images/bg2.png"
           alt="Background"
           className="w-100 h-100"
           style={{

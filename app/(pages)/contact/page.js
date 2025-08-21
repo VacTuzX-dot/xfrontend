@@ -3,7 +3,6 @@ import { useState, useCallback, useMemo } from "react";
 import { Container, Form, Button } from "react-bootstrap";
 import { motion, AnimatePresence } from "framer-motion";
 
-const BG_IMAGE = "/images/bg.png";
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function ContactPage() {
@@ -97,7 +96,7 @@ export default function ContactPage() {
           }}
         >
           <img
-            src={BG_IMAGE}
+            src="/images/bg.png"
             alt="Background"
             className="w-100 h-100"
             style={{

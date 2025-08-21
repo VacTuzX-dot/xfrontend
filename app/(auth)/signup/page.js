@@ -5,8 +5,6 @@ import { useRouter } from "next/navigation";
 import Swal from "sweetalert2";
 import { motion } from "framer-motion";
 
-const BG_IMAGE = "/images/bg.png";
-
 const fadeIn = {
   hidden: { opacity: 0, y: 20 },
   visible: {
@@ -138,7 +136,7 @@ export default function Register() {
         }}
       >
         <img
-          src={BG_IMAGE}
+          src="/images/bg.png"
           alt="Background"
           className="w-100 h-100"
           style={{
