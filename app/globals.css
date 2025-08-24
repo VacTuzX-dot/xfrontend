@@ -80,6 +80,73 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
+/* Calendar button dark theme */
+.btn-calendar,
+.calendar-btn,
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+input[type="month"]::-webkit-calendar-picker-indicator,
+input[type="week"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  background-color: #000 !important;
+  color: #fff !important;
+  border: 1px solid #333 !important;
+  cursor: pointer;
+  filter: invert(1);
+}
+
+/* For custom calendar buttons */
+.btn-calendar:hover,
+.calendar-btn:hover {
+  background-color: #333 !important;
+  border-color: #555 !important;
+}
+
+/* Date input styling */
+input[type="date"],
+input[type="datetime-local"],
+input[type="month"],
+input[type="week"],
+input[type="time"] {
+  color-scheme: dark;
+}
+
+/* Search input placeholder dark theme */
+.search-fx .form-control::placeholder,
+.search-mobile .form-control::placeholder,
+.navbar .form-control::placeholder {
+  color: #000 !important;
+  opacity: 0.7;
+}
+
+/* Cross-browser placeholder support */
+.search-fx .form-control::-webkit-input-placeholder,
+.search-mobile .form-control::-webkit-input-placeholder,
+.navbar .form-control::-webkit-input-placeholder {
+  color: #000 !important;
+  opacity: 0.7;
+}
+
+.search-fx .form-control::-moz-placeholder,
+.search-mobile .form-control::-moz-placeholder,
+.navbar .form-control::-moz-placeholder {
+  color: #000 !important;
+  opacity: 0.7;
+}
+
+.search-fx .form-control:-ms-input-placeholder,
+.search-mobile .form-control:-ms-input-placeholder,
+.navbar .form-control:-ms-input-placeholder {
+  color: #000 !important;
+  opacity: 0.7;
+}
+
+/* Alternative: Target all search inputs in navbar */
+.navbar input[type="search"]::placeholder {
+  color: #000 !important;
+  opacity: 0.7;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .signup-form-container {

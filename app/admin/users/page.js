@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import Swal from "sweetalert2";
 import bcrypt from "bcryptjs";
 import { useRouter } from "next/navigation";
@@ -20,16 +20,29 @@ export default function Page() {
 
   const filtered = useMemo(() => {
     if (!q.trim()) return items;
-    const s = q.toLowerCase();
-    return items.filter(
-      (x) =>
-        (x.firstname || "").toLowerCase().includes(s) ||
-        (x.fullname || "").toLowerCase().includes(s) ||
-        (x.lastname || "").toLowerCase().includes(s) ||
-        (x.username || "").toLowerCase().includes(s) ||
-        (x.address || "").toLowerCase().includes(s) ||
-        (x.sex || "").toLowerCase().includes(s)
-    );
+
+    const searchTerms = q.toLowerCase().split(/\s+/).filter(Boolean);
+    if (searchTerms.length === 0) return items;
+
+    const searchableFields = [
+      "firstname",
+      "fullname",
+      "lastname",
+      "username",
+      "address",
+      "sex",
+    ];
+
+    return items.filter((item) => {
+      // Create a single searchable string from all fields
+      const itemText = searchableFields
+        .map((field) => item[field] || "")
+        .join(" ")
+        .toLowerCase();
+
+      // Item matches if it contains all search terms
+      return searchTerms.every((term) => itemText.includes(term));
+    });
   }, [items, q]);
 
   // จัดการเลือก user ทีละคน
@@ -62,72 +75,132 @@ export default function Page() {
     }
   }, [filtered, selectedIds]);
 
-  // ลบผู้ใช้หลายคน
+  // Optimized batch delete
   async function handleDeleteSelected() {
     if (selectedIds.length === 0) return;
     const { isConfirmed } = await Swal.fire({
       icon: "warning",
-      title: `ลบผู้ใช้ที่เลือกทั้งหมด?`,
-      html: `คุณแน่ใจหรือไม่ว่าจะลบ <b>${selectedIds.length}</b> รายการ?`,
+      title: `Delete Selected Users?`,
+      html: `Are you sure you want to delete <b>${selectedIds.length}</b> items?`,
       showCancelButton: true,
-      confirmButtonText: "ลบเลย",
-      cancelButtonText: "ยกเลิก",
+      confirmButtonText: "Delete",
+      cancelButtonText: "Cancel",
       confirmButtonColor: "#d33",
     });
     if (!isConfirmed) return;
+
+    const batchSize = 10; // Process 10 deletions at a time
     let ok = 0,
       fail = 0;
-    for (const id of selectedIds) {
-      try {
-        const res = await fetch(`${API}/${id}`, {
-          method: "DELETE",
-          headers: { Accept: "application/json" },
-        });
-        if (!res.ok) throw new Error("Delete failed");
-        ok++;
-      } catch (err) {
-        fail++;
-      }
+
+    // Show loading state
+    Swal.fire({
+      title: "Deleting...",
+      html: `Progress: 0/${selectedIds.length}`,
+      allowOutsideClick: false,
+      didOpen: () => {
+        Swal.showLoading();
+      },
+    });
+
+    // Process deletions in batches
+    for (let i = 0; i < selectedIds.length; i += batchSize) {
+      const batch = selectedIds.slice(i, i + batchSize);
+      const results = await Promise.allSettled(
+        batch.map((id) =>
+          fetch(`${API}/${id}`, {
+            method: "DELETE",
+            headers: { Accept: "application/json" },
+          })
+        )
+      );
+
+      // Count successes and failures
+      results.forEach((result) => {
+        if (result.status === "fulfilled" && result.value.ok) ok++;
+        else fail++;
+      });
+
+      // Update progress
+      Swal.update({
+        html: `Progress: ${Math.min(i + batchSize, selectedIds.length)}/${
+          selectedIds.length
+        }`,
+      });
     }
-    await getUsers(false);
+
+    // Optimistically update the UI
+    setItems((prev) => prev.filter((item) => !selectedIds.includes(item.id)));
     setSelectedIds([]);
+
+    // Refresh data in background
+    getUsers(false);
+
     Swal.fire({
       icon: fail ? "warning" : "success",
-      title: fail ? "สำเร็จบางส่วน" : "สำเร็จ",
-      html: `ลบสำเร็จ: <b>${ok}</b> รายการ<br/>ล้มเหลว: <b>${fail}</b> รายการ`,
+      title: fail ? "Partially Completed" : "Success",
+      html: `Successfully deleted: <b>${ok}</b> items<br/>Failed: <b>${fail}</b> items`,
     });
   }
 
-  async function getUsers(showSpinner = true) {
+  const getUsers = useCallback(async (showSpinner = true) => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
     try {
       if (showSpinner) setLoading(true);
-      const res = await fetch(API);
+
+      const res = await fetch(API, {
+        signal: controller.signal,
+        headers: {
+          Accept: "application/json",
+          "Cache-Control": "no-cache",
+        },
+      });
+
+      clearTimeout(timeoutId);
+
       if (!res.ok) throw new Error("Failed to fetch data");
       const data = await res.json();
       const arr = Array.isArray(data) ? data : [];
 
-      // ตรวจว่ามี user ไหนที่เพิ่งถูกแฮช (จาก plaintext → hashed) จะเน้นสีให้แป๊บหนึ่ง
+      // Check for newly hashed passwords
       const prev = prevItemsRef.current;
-      const justHashedIds = [];
-      for (const cur of arr) {
+      const justHashedIds = arr.reduce((ids, cur) => {
         const old = prev.find((p) => p.id === cur.id);
-        if (old && old.password && cur.password) {
+        if (old?.password && cur.password) {
           const wasPlain = !isHashed(old.password);
           const nowHashed = isHashed(cur.password);
-          if (wasPlain && nowHashed) justHashedIds.push(cur.id);
+          if (wasPlain && nowHashed) ids.push(cur.id);
         }
-      }
+        return ids;
+      }, []);
+
       setFlashIds(justHashedIds);
       prevItemsRef.current = arr;
-      setItems(arr);
+      setItems((prev) => {
+        // Only update if data actually changed
+        if (JSON.stringify(prev) === JSON.stringify(arr)) return prev;
+        return arr;
+      });
     } catch (err) {
-      console.error(err);
-      Swal.fire("Error", "โหลดข้อมูลไม่สำเร็จ", "error");
+      if (err.name === "AbortError") {
+        console.log("Request timed out");
+      } else {
+        console.error(err);
+        Swal.fire({
+          icon: "error",
+          title: "Error",
+          text: "Failed to load data",
+          timer: 2000,
+          showConfirmButton: false,
+        });
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }
+  }, []);
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -161,26 +234,41 @@ export default function Page() {
   async function handleDelete(id) {
     const { isConfirmed } = await Swal.fire({
       icon: "warning",
-      title: "ลบผู้ใช้?",
-      text: `คุณแน่ใจหรือไม่ว่าจะลบผู้ใช้ #${id}`,
+      title: "Delete User?",
+      text: `Are you sure you want to delete user #${id}?`,
       showCancelButton: true,
-      confirmButtonText: "ลบเลย",
-      cancelButtonText: "ยกเลิก",
+      confirmButtonText: "Delete",
+      cancelButtonText: "Cancel",
       confirmButtonColor: "#d33",
     });
     if (!isConfirmed) return;
 
     try {
+      // Optimistically update UI
+      setItems((prev) => prev.filter((item) => item.id !== id));
+
       const res = await fetch(`${API}/${id}`, {
         method: "DELETE",
         headers: { Accept: "application/json" },
       });
+
       if (!res.ok) throw new Error("Delete failed");
-      await getUsers(false);
-      Swal.fire("สำเร็จ", "ลบผู้ใช้เรียบร้อย", "success");
+
+      // Silently refresh data in background
+      getUsers(false);
+
+      Swal.fire({
+        icon: "success",
+        title: "Success",
+        text: "User deleted successfully",
+        timer: 1500,
+        showConfirmButton: false,
+      });
     } catch (err) {
       console.error(err);
-      Swal.fire("Error", "ลบไม่สำเร็จ", "error");
+      // Restore the item if delete failed
+      getUsers(false);
+      Swal.fire("Error", "Delete failed", "error");
     }
   }
 
@@ -377,85 +465,136 @@ export default function Page() {
   return (
     <>
       <style jsx>{`
-        /* การ์ดเฟดเข้า */
+        /* Layout and Responsive Design */
+        .container {
+          min-height: calc(100vh - 2rem);
+          display: flex;
+          flex-direction: column;
+        }
+
+        .card {
+          flex: 1;
+          margin-bottom: auto;
+        }
+
+        /* Enhanced Animations */
         .card-appear {
-          animation: fadeInUp 500ms ease both;
+          animation: fadeInUp 600ms cubic-bezier(0.21, 1.02, 0.73, 1) both;
         }
-        /* แถวสไลด์ขึ้นแบบ stagger */
+
         .row-anim {
-          animation: slideUp 420ms cubic-bezier(0.2, 0.6, 0.2, 1) both;
+          animation: slideUp 500ms cubic-bezier(0.2, 0.6, 0.2, 1) both;
           will-change: transform, opacity;
+          transition: background-color 0.3s ease;
         }
-        /* ไฮไลต์เมื่อเพิ่งถูกแฮช */
+
+        .row-anim:hover {
+          background-color: rgba(0, 0, 0, 0.02);
+        }
+
         .flash {
-          animation: flashBg 1500ms ease 1;
+          animation: flashBg 2000ms cubic-bezier(0.4, 0, 0.2, 1) 1;
         }
-        /* ปุ่ม hash hover วาร์ปนิด ๆ */
+
+        /* Enhanced Button Styles */
         .btn-hash {
-          transition: transform 160ms ease;
+          transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
         }
+
         .btn-hash:hover {
-          transform: translateY(-1px);
+          transform: translateY(-2px);
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
-        /* skeleton ระหว่างโหลด */
+
+        /* Improved Loading Skeleton */
         .skeleton {
           height: 14px;
           border-radius: 6px;
-          background: linear-gradient(90deg, #eee 25%, #f6f6f6 37%, #eee 63%);
+          background: linear-gradient(
+            90deg,
+            #f0f0f0 25%,
+            #f8f8f8 37%,
+            #f0f0f0 63%
+          );
           background-size: 400% 100%;
-          animation: shimmer 1.3s ease infinite;
+          animation: shimmer 1.4s ease infinite;
         }
 
+        /* Responsive Table */
+        @media (max-width: 768px) {
+          .table-responsive {
+            margin: 0 -1rem;
+          }
+
+          .btn {
+            padding: 0.375rem 0.5rem;
+          }
+
+          .form-control {
+            min-width: 200px !important;
+          }
+        }
+
+        /* Enhanced Animations */
         @keyframes shimmer {
           0% {
             background-position: 100% 0;
           }
           100% {
-            background-position: 0 0;
+            background-position: -100% 0;
           }
         }
+
         @keyframes fadeInUp {
           from {
             opacity: 0;
-            transform: translate3d(0, 8px, 0);
+            transform: translate3d(0, 16px, 0);
           }
           to {
             opacity: 1;
             transform: translate3d(0, 0, 0);
           }
         }
+
         @keyframes slideUp {
           from {
             opacity: 0;
-            transform: translate3d(0, 10px, 0);
+            transform: translate3d(0, 12px, 0);
           }
           to {
             opacity: 1;
             transform: translate3d(0, 0, 0);
           }
         }
+
         @keyframes flashBg {
           0% {
-            background-color: #e7f7ee;
+            background-color: rgba(25, 135, 84, 0.1);
+          }
+          50% {
+            background-color: rgba(25, 135, 84, 0.05);
           }
           100% {
             background-color: transparent;
           }
         }
+
         @media (prefers-reduced-motion: reduce) {
           .card-appear,
           .row-anim,
-          .flash {
+          .flash,
+          .btn-hash {
             animation: none !important;
+            transition: none !important;
           }
         }
       `}</style>
 
       <div className="container my-4">
-        <div className="card shadow-sm border-0 card-appear">
-          <div className="card-header d-flex flex-wrap align-items-center gap-2">
-            <h5 className="m-0">Users List</h5>
-            <div className="ms-auto d-flex gap-2">
+        <div className="card shadow border-0 card-appear">
+          <div className="card-header bg-white d-flex flex-wrap align-items-center gap-3 py-3">
+            <h5 className="m-0 text-primary fw-bold">Users List</h5>
+            <div className="ms-auto d-flex flex-wrap gap-2">
               <input
                 className="form-control"
                 placeholder="ค้นหา ชื่อ/สกุล/ผู้ใช้/ที่อยู่/เพศ..."
@@ -505,12 +644,13 @@ export default function Page() {
               </div>
             ) : (
               <div className="table-responsive">
-                <table className="table table-hover table-striped align-middle mb-0">
-                  <thead className="table-dark">
-                    <tr>
-                      <th className="text-center" style={{ width: 40 }}>
+                <table className="table table-hover align-middle mb-0">
+                  <thead>
+                    <tr className="bg-primary bg-opacity-10 text-dark">
+                      <th className="text-center py-3" style={{ width: 40 }}>
                         <input
                           type="checkbox"
+                          className="form-check-input"
                           checked={selectAll}
                           onChange={handleSelectAll}
                           aria-label="เลือกทั้งหมด"
@@ -626,11 +766,12 @@ export default function Page() {
             )}
           </div>
 
-          <div className="card-footer small text-muted d-flex flex-wrap align-items-center gap-2">
-            <span>
-              รวมทั้งหมด: {items.length} รายการ • แสดง: {filtered.length} รายการ
+          <div className="card-footer bg-light border-top-0 small text-muted d-flex flex-wrap align-items-center gap-2 py-3">
+            <span className="ms-2">
+              <i className="bi bi-info-circle me-1"></i>
+              Total: {items.length} items • Showing: {filtered.length} items
               {selectedIds.length > 0 &&
-                ` • เลือกแล้ว: ${selectedIds.length} รายการ`}
+                ` • Selected: ${selectedIds.length} items`}
             </span>
           </div>
         </div>
